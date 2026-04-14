@@ -1,0 +1,39 @@
+# Node dependencies
+node_modules/
+
+# Composer dependencies
+vendor/
+
+# PHP runtime / build
+*.log
+*.cache
+*.sqlite
+*.sqlite3
+
+# PHPUnit cache
+.phpunit.cache/
+
+# Playwright artifacts
+playwright-report/
+test-results/
+
+# Environment files
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Backup files
+*.bak
+*.tmp
+*~

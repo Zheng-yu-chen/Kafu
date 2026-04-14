@@ -1,0 +1,21 @@
+{
+    "name": "kafu/system-project",
+    "description": "餐飲管理系統項目",
+    "type": "project",
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-verbose": "vendor/bin/phpunit --verbose",
+        "test-coverage": "vendor/bin/phpunit --coverage-html=coverage"
+    }
+}
