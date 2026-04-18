@@ -164,12 +164,7 @@ $result = $conn->query($sql);
     ?>
 </div>
 
-<nav class="bottom-nav">
-    <a href="index.php" class="nav-item active"><div>🏠</div><div>店家</div></a>
-    <a href="tray.php" class="nav-item"><div>📋</div><div>托盤</div></a>
-    <a href="#" class="nav-item"><div>💬</div><div>評價</div></a>
-    <a href="login.php" class="nav-item"><div>👤</div><div>我的</div></a>
-</nav>
+<?php include('footer.php'); ?>
 
 </body>
 </html>
