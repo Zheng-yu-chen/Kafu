@@ -5,9 +5,9 @@ include('db.php');
  * 1. 後端對接區 (SQL 邏輯)
  * 這裡已經寫好了關聯查詢，後端只要建立 'tray' 表與 'items' 表即可
  */
-$sql = "SELECT t.id AS tray_id, i.name, i.restaurant, i.calories, i.protein 
+$sql = "SELECT t.id AS tray_id, i.name, i.calories, i.protein, r_id
         FROM tray t 
-        JOIN items i ON t.item_id = i.id";
+        JOIN items i ON t.item_id = i.i_id"; 
 
 $result = $conn->query($sql);
 

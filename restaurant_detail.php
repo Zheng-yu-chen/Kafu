@@ -19,10 +19,9 @@ if ($r_id === 0) {
 
 // 4. SQL 指令：透過 Categories 表串接 Items 表
 // 這裡對應你最後給的 Schema：Items(c_id) -> Categories(c_id, r_id)
-$sql = "SELECT i.item_id, i.item_name, i.calories, i.price 
-        FROM Items i
-        JOIN Categories c ON i.c_id = c.c_id
-        WHERE c.r_id = $r_id";
+$sql = "SELECT i_id, name, calories, price 
+        FROM items 
+        WHERE r_id = $r_id";
 
 $result = $conn->query($sql);
 
