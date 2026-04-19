@@ -1,0 +1,94 @@
+/* style.css */
+:root {
+    --fujen-blue: #002B5B;
+    --primary-orange: #FF8C42;
+    --bg-light: #f4f7f9;
+    --text-gray: #888;
+    --white: #ffffff;
+}
+
+/* 1. 手機比例容器 (電腦版置中) */
+/* style.css */
+body {
+    background-color: #e9ecef; /* 電腦版外框改成乾淨的淺灰/白色 */
+    margin: 0; padding: 0; display: flex; justify-content: center;
+    font-family: 'PingFang TC', -apple-system, sans-serif;
+}
+
+.mobile-wrapper {
+    width: 100%; max-width: 430px; min-height: 100vh;
+    background-color: #ffffff; /* 手機畫面是純白 */
+    box-shadow: 0 0 20px rgba(0,0,0,0.1); /* 淡淡的陰影讓它立體 */
+    position: relative; overflow-x: hidden; padding-bottom: 80px;
+}
+
+/* 2. 通用標題區 (Header) */
+.header-blue {
+    background-color: var(--fujen-blue);
+    color: white;
+    padding: 40px 20px 30px;
+}
+.header-blue h1 { margin: 0; font-size: 24px; }
+.header-blue p { margin: 5px 0 0; font-size: 14px; opacity: 0.8; }
+
+/* 3. 白色圓角區塊 (Section) */
+.white-section {
+    background: var(--white);
+    margin: 15px;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* 4. 通用卡片樣式 (用於店家、餐點、評價) */
+.card {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* 5. 篩選標籤 (Filter Tags) */
+.filter-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px 20px;
+    margin-top: -25px;
+    position: relative;
+    z-index: 10;
+}
+.filter-tag {
+    background: var(--white);
+    color: var(--fujen-blue);
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    font-weight: bold;
+    white-space: nowrap;
+}
+.filter-tag.active {
+    background: var(--fujen-blue);
+    color: var(--white);
+}
+
+/* 6. 按鈕樣式 */
+.btn-primary {
+    background: var(--fujen-blue);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+}
