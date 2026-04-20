@@ -112,7 +112,14 @@ $result = $conn->query($sql);
                     </div>
                 </div>
                 
-                <?php if ($_SESSION['role_id'] == 3): ?>
+                <?php 
+                    $show_add_btn = true; // 預設訪客跟學生都看得到
+                    if (isset($_SESSION['role_id']) && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)) {
+                        $show_add_btn = false; // 店家和管理員隱藏
+                    }
+                ?>
+                
+                <?php if ($show_add_btn): ?>
                     <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['item_name']); ?>')">+</button>
                 <?php endif; ?>
             </div>
