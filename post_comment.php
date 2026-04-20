@@ -112,7 +112,7 @@ if ($item_query) {
             <label>選擇餐點</label>
             <div class="select-wrapper">
                 <select name="item_id" id="itemSelect" class="custom-select" required disabled>
-                    <option value="" disabled selected>請先選擇餐廳</option>
+                    <option value="" disabled selected>請先選擇餐點</option>
                 </select>
             </div>
         </div>
