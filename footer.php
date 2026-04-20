@@ -4,8 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 💡 判斷身份，決定「我的」按鈕要連到哪一頁
-$profile_url = 'profile.php'; // 預設是學生的個人檔案
+// 判斷身份，決定「我的」按鈕要連到哪一頁
+$profile_url = 'profile.php'; // 訪客與一般用戶預設連到 profile.php (裡面會自己檢查登入)
 if (isset($_SESSION['role_id'])) {
     if ($_SESSION['role_id'] == 2) {
         $profile_url = 'store_profile.php'; // 店家連到儀表板
@@ -21,7 +21,7 @@ if (isset($_SESSION['role_id'])) {
         <span>首頁</span>
     </a>
 
-    <?php if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3): ?>
+    <?php if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] == 3): ?>
     <a href="tray.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'tray.php') ? 'active' : ''; ?>">
         <div class="nav-icon">📋</div>
         <span>托盤</span>
