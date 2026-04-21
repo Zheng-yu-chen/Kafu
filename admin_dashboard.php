@@ -16,7 +16,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 // 1. 撈取「待審核評價」(status = 0)
 // ==========================================
 try {
-    $sql_reviews = "SELECT c.*, i.item_name, r.name AS res_name, r.location, a.name AS reviewer_name 
+    $sql_reviews = "SELECT c.*, i.name AS item_name, r.name AS res_name, r.location, a.name AS reviewer_name 
                     FROM comments c
                     JOIN items i ON c.item_id = i.item_id
                     JOIN categories cat ON i.c_id = cat.c_id
@@ -44,11 +44,17 @@ try {
 } catch (mysqli_sql_exception $e) {}
 
 $items = [];
-// 💡 防呆機制：如果 categories 沒有 name 欄位，就不會崩潰
 try {
-    // 第一次嘗試：假設分類名稱的欄位叫做 name
     $item_query = $conn->query("
-        SELECT i.*, c.name AS c_name, c.r_id 
+        SELECT 
+            i.item_id,
+            i.c_id,
+            i.name AS item_name,
+            i.price,
+            i.calories,
+            i.protein,
+            c.cat_name AS c_name,
+            c.r_id 
         FROM items i 
         JOIN categories c ON i.c_id = c.c_id
     ");
@@ -57,119 +63,61 @@ try {
             $items[] = $i;
         }
     }
-} catch (mysqli_sql_exception $e) {
-    // 💥 第二次嘗試：如果報錯，代表沒有 name 欄位，我們就只抓資料不抓分類名字
-    $item_query = $conn->query("
-        SELECT i.*, c.r_id 
-        FROM items i 
-        JOIN categories c ON i.c_id = c.c_id
-    ");
-    if ($item_query) {
-        while($i = $item_query->fetch_assoc()) {
-            $i['c_name'] = '未分類'; // 自動填入預設文字避免 JS 錯誤
-            $items[] = $i;
-        }
-    }
-}
+} catch (mysqli_sql_exception $e) {}
 ?>
 
 <style>
-    body { background-color: #f4f7f9; }
+    body { background-color: #f4f7f9; font-family: sans-serif; }
+    .admin-header { background-color: #002B5B; color: white; padding: 30px 20px 20px; }
+    .admin-header h1 { margin: 0; font-size: 22px; }
+    
+    .tab-container { display: flex; background: white; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+    .tab-btn { flex: 1; text-align: center; padding: 15px 0; cursor: pointer; color: #666; font-weight: bold; }
+    .tab-btn.active { color: #002B5B; border-bottom: 3px solid #002B5B; }
+    .badge { background-color: #FF8C42; color: white; font-size: 12px; padding: 2px 8px; border-radius: 12px; margin-left: 5px; }
 
-    /* 頂部 Header */
-    .admin-header {
-        background-color: var(--fujen-blue, #002B5B);
-        color: white; padding: 30px 20px 20px;
-    }
-    .admin-header h1 { margin: 0; font-size: 22px; letter-spacing: 1px; }
-    .admin-header p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
-
-    /* 標籤頁 (Tabs) */
-    .tab-container {
-        display: flex; background: white; border-bottom: 1px solid #ddd;
-        position: sticky; top: 0; z-index: 100;
-    }
-    .tab-btn {
-        flex: 1; text-align: center; padding: 15px 0; font-size: 15px;
-        cursor: pointer; color: #666; font-weight: bold; transition: 0.2s;
-    }
-    .tab-btn.active { color: var(--fujen-blue, #002B5B); border-bottom: 3px solid var(--fujen-blue, #002B5B); }
-    .badge {
-        background-color: var(--primary-orange, #FF8C42); color: white;
-        font-size: 12px; padding: 2px 8px; border-radius: 12px; margin-left: 5px;
-    }
-
-    /* 內容區塊 */
     .content-section { padding: 20px; display: none; }
     .content-section.active { display: block; }
-    .section-title { font-size: 16px; font-weight: bold; color: #333; margin: 0 0 15px; }
 
-    /* 評價卡片 */
-    .review-card {
-        background: white; border-radius: 12px; padding: 15px;
-        margin-bottom: 15px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
-    .review-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .reviewer-name { font-size: 15px; font-weight: bold; color: #333; }
-    .review-time { font-size: 11px; color: #999; margin-top: 2px; }
-    .review-stars { color: #FFC107; font-size: 14px; }
+    /* 菜單卡片與表格 */
+    .menu-card { background: white; border-radius: 12px; border: 1px solid #eee; overflow: hidden; }
+    .breadcrumb { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
+    .breadcrumb-back { cursor: pointer; color: #002B5B; font-size: 18px; }
     
-    .item-tag { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
-    .item-tag-name { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 4px; }
-    .item-tag-loc { font-size: 12px; color: #888; }
-    
-    .review-text { font-size: 14px; color: #555; line-height: 1.5; margin-bottom: 15px; }
-    
-    .action-buttons { display: flex; gap: 10px; }
-    .btn-approve, .btn-reject { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; color: white; display: flex; justify-content: center; align-items: center; gap: 5px; }
-    .btn-approve { background-color: #4CAF50; }
-    .btn-reject { background-color: #F44336; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f8f9fa; cursor: pointer; }
+    .list-icon { width: 40px; height: 40px; background: #002B5B; color: white; border-radius: 10px; display: flex; justify-content: center; align-items: center; margin-right: 15px; }
 
-    /* 菜單維護 - 列表樣式 */
-    .menu-card {
-        background: white; border-radius: 12px; border: 1px solid #eee;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03); overflow: hidden;
-    }
-    .breadcrumb { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #666; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-    .breadcrumb-back { cursor: pointer; color: var(--fujen-blue, #002B5B); font-size: 18px; line-height: 1; }
-    .breadcrumb span { cursor: pointer; }
-    .breadcrumb span:hover { color: var(--fujen-blue, #002B5B); }
-
-    .list-item {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 15px; border-bottom: 1px solid #f8f9fa; cursor: pointer; transition: 0.2s;
-    }
-    .list-item:hover { background: #fafbfc; }
-    .list-item:last-child { border-bottom: none; }
-    
-    .list-icon { width: 40px; height: 40px; background: var(--fujen-blue, #002B5B); color: white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-weight: bold; margin-right: 15px; font-size: 16px; }
-    .list-info h5 { margin: 0; font-size: 15px; color: #333; }
-    .list-info p { margin: 4px 0 0; font-size: 12px; color: #888; }
-    .arrow { color: #ccc; font-weight: bold; }
-
-    /* 餐點表格樣式 */
-    .table-container { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-    th { padding: 12px 15px; color: #666; border-bottom: 1px solid #eee; white-space: nowrap; }
-    td { padding: 15px; border-bottom: 1px solid #f8f9fa; color: #333; vertical-align: middle; }
-    .td-val { color: var(--primary-orange, #FF8C42); font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 12px; border-bottom: 1px solid #eee; color: #666; text-align: left; }
+    td { padding: 12px; border-bottom: 1px solid #f8f9fa; }
+    .td-val { color: #FF8C42; font-weight: bold; }
     .td-pro { color: #4CAF50; font-weight: bold; }
-    .action-icon { color: var(--fujen-blue, #002B5B); font-size: 16px; margin-right: 10px; cursor: pointer; text-decoration: none;}
-    .action-icon.delete { color: #F44336; }
+    .action-icon { font-size: 16px; margin-right: 10px; cursor: pointer; }
 
-    /* 底部登出區塊 */
-    .logout-section { padding: 20px; margin-bottom: 80px; }
-    .logout-btn {
-        background: white; display: flex; align-items: center; justify-content: center;
-        padding: 16px; border-radius: 12px; color: #F44336; text-decoration: none;
-        font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.05); gap: 10px; border: 1px solid #FFCDD2;
+    /* 編輯彈窗 Modal */
+    .modal {
+        display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+        width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+        align-items: center; justify-content: center;
     }
-    .logout-btn:active { background: #FFF5F5; transform: scale(0.98); }
+    .modal-content {
+        background: white; padding: 20px; border-radius: 12px;
+        width: 90%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+    .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { flex: 2; background: #002B5B; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .btn-cancel { flex: 1; background: #eee; border: none; padding: 12px; border-radius: 8px; cursor: pointer; }
+
+    .logout-section { padding: 20px; margin-bottom: 80px; }
+    .logout-btn { display: block; text-align: center; padding: 16px; background: white; color: #F44336; text-decoration: none; border-radius: 12px; border: 1px solid #FFCDD2; font-weight: bold; }
 </style>
 
 <div class="admin-header">
     <h1>管理員工作台</h1>
-    <p>系統管理與審核</p>
+    <p>KaFu 系統管理與審核</p>
 </div>
 
 <div class="tab-container">
@@ -178,186 +126,194 @@ try {
 </div>
 
 <div id="tab-reviews" class="content-section active">
-    
     <?php if ($pending_count > 0): ?>
-        <h3 class="section-title">待審核評價 (<?php echo $pending_count; ?>)</h3>
         <?php while($rev = $reviews_result->fetch_assoc()): ?>
-            <div class="review-card">
-                <div class="review-header">
-                    <div>
-                        <div class="reviewer-name"><?php echo htmlspecialchars($rev['reviewer_name'] ?? '匿名顧客'); ?></div>
-                        <div class="review-time"><?php echo date('Y-m-d H:i', strtotime($rev['created_at'])); ?></div>
-                    </div>
-                    <div class="review-stars"><?php echo str_repeat('★', $rev['rating']) . str_repeat('☆', 5 - $rev['rating']); ?></div>
-                </div>
-                
-                <div class="item-tag">
-                    <div class="item-tag-name"><?php echo htmlspecialchars($rev['item_name']); ?></div>
-                    <div class="item-tag-loc"><?php echo htmlspecialchars($rev['res_name'] ?? '') . ' • ' . htmlspecialchars($rev['location'] ?? ''); ?></div>
-                </div>
-                
-                <div class="review-text"><?php echo nl2br(htmlspecialchars($rev['content'])); ?></div>
-                
-                <div class="action-buttons">
-                    <button class="btn-approve" onclick="alert('審核通過！將更新 status=1')">✓ 通過</button>
-                    <button class="btn-reject" onclick="if(confirm('確定要拒絕並刪除此評價嗎？')) alert('已拒絕！將刪除此記錄')">✕ 拒絕</button>
-                </div>
+            <div style="background:white; padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid #eee;">
+                <strong><?php echo htmlspecialchars($rev['reviewer_name'] ?? '匿名'); ?></strong> 
+                <span style="color:#999; font-size:11px;"><?php echo $rev['created_at']; ?></span>
+                <p style="margin:10px 0;"><?php echo nl2br(htmlspecialchars($rev['content'])); ?></p>
+                <div style="display:flex; gap:10px;">
+    <button onclick="reviewAction(<?php echo $rev['com_id']; ?>, 'approve')" style="background:#4CAF50; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">通過</button>
+    <button onclick="reviewAction(<?php echo $rev['com_id']; ?>, 'reject')" style="background:#F44336; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">拒絕</button>
+</div>
             </div>
         <?php endwhile; ?>
     <?php else: ?>
-        <div style="text-align:center; padding: 50px 0;">
-            <div style="font-size: 40px; margin-bottom: 10px;">🎉</div>
-            <p style="color:#999; font-weight:bold;">目前沒有待審核的評價！</p>
-        </div>
+        <p style="text-align:center; color:#999; margin-top:50px;">目前沒有待處理評價</p>
     <?php endif; ?>
 </div>
 
 <div id="tab-menu" class="content-section">
     <div class="menu-card">
-        <div id="breadcrumb" class="breadcrumb">
-            </div>
-        <div id="menu-list-container">
-            </div>
+        <div id="breadcrumb" class="breadcrumb"></div>
+        <div id="menu-list-container"></div>
     </div>
 </div>
 
 <div class="logout-section">
-    <a href="logout.php" class="logout-btn">登出</a>
+    <a href="logout.php" class="logout-btn">登出系統</a>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0;">編輯餐點資料</h3>
+        <input type="hidden" id="edit-id">
+        <div class="form-group">
+            <label>餐點名稱</label>
+            <input type="text" id="edit-name">
+        </div>
+        <div class="form-group">
+            <label>價格 ($)</label>
+            <input type="number" id="edit-price">
+        </div>
+        <div class="form-group">
+            <label>熱量 (kcal)</label>
+            <input type="number" id="edit-calories">
+        </div>
+        <div class="form-group">
+            <label>蛋白質 (g)</label>
+            <input type="number" step="0.1" id="edit-protein">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">取消</button>
+            <button class="btn-save" onclick="saveEdit()">確定修改</button>
+        </div>
+    </div>
 </div>
 
 <script>
-    // ==========================================
-    // 1. Tab 切換邏輯
-    // ==========================================
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
-        
-        event.currentTarget.classList.add('active');
-        document.getElementById('tab-' + tabName).classList.add('active');
-    }
+    function reviewAction(id, action) {
+    if (action === 'reject' && !confirm('確定要拒絕並刪除這則評價嗎？')) return;
 
-    // ==========================================
-    // 2. 菜單維護 - JS 動態下鑽邏輯
-    // ==========================================
+    const formData = new FormData();
+    formData.append('action', action);
+    formData.append('com_id', id);
+
+    fetch('manage_review_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(action === 'approve' ? '評價已通過審核！' : '評價已刪除。');
+            location.reload(); // 重新整理頁面更新待審核數量
+        } else {
+            alert('操作失敗：' + data.message);
+        }
+    })
+    .catch(err => console.error('Error:', err));
+}
     const restaurants = <?php echo json_encode($restaurants); ?>;
     const items = <?php echo json_encode($items); ?>;
-    
-    // 取得所有不重複的地點 (例如: 心園, 理園, 輔園)
     const locations = [...new Set(restaurants.map(r => r.location))].filter(l => l);
 
     const breadcrumb = document.getElementById('breadcrumb');
     const listContainer = document.getElementById('menu-list-container');
-
-    let currentView = 'locations';
     let selectedLoc = '';
 
-    // 第一層：渲染地點
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
     function renderLocations() {
-        currentView = 'locations';
         breadcrumb.innerHTML = `餐廳`;
-        
         let html = '';
         locations.forEach(loc => {
-            let locResIds = restaurants.filter(r => r.location === loc).map(r => r.r_id);
-            let itemCount = items.filter(i => locResIds.includes(i.r_id)).length;
-            
             html += `
                 <div class="list-item" onclick="renderRestaurants('${loc}')">
                     <div style="display:flex; align-items:center;">
-                        <div class="list-icon">${loc.substring(0,1)}</div>
-                        <div class="list-info"><h5>${loc}</h5><p>${itemCount} 項餐點</p></div>
+                        <div class="list-icon">${loc[0]}</div>
+                        <h5>${loc}</h5>
                     </div>
-                    <div class="arrow">❯</div>
-                </div>
-            `;
+                    <span>❯</span>
+                </div>`;
         });
         listContainer.innerHTML = html;
     }
 
-    // 第二層：渲染餐廳
     function renderRestaurants(loc) {
-        currentView = 'restaurants';
         selectedLoc = loc;
-        
-        breadcrumb.innerHTML = `
-            <span class="breadcrumb-back" onclick="renderLocations()">←</span>
-            <span onclick="renderLocations()">餐廳</span> ❯ <span style="color:#333;">${loc}</span>
-        `;
-        
-        let filteredRes = restaurants.filter(r => r.location === loc);
+        breadcrumb.innerHTML = `<span class="breadcrumb-back" onclick="renderLocations()">←</span> <span onclick="renderLocations()">餐廳</span> ❯ ${loc}`;
         let html = '';
-        
-        filteredRes.forEach(res => {
-            let itemCount = items.filter(i => i.r_id == res.r_id).length;
+        restaurants.filter(r => r.location === loc).forEach(res => {
             html += `
                 <div class="list-item" onclick="renderItems(${res.r_id}, '${res.name}')">
-                    <div class="list-info"><h5>${res.name}</h5><p>${itemCount} 項餐點</p></div>
-                    <div class="arrow">❯</div>
-                </div>
-            `;
+                    <h5>${res.name}</h5>
+                    <span>❯</span>
+                </div>`;
         });
         listContainer.innerHTML = html;
     }
 
-    // 第三層：渲染餐點表格
     function renderItems(r_id, resName) {
-        currentView = 'items';
-        
-        breadcrumb.innerHTML = `
-            <span class="breadcrumb-back" onclick="renderRestaurants('${selectedLoc}')">←</span>
-            <span onclick="renderLocations()">餐廳</span> ❯ 
-            <span onclick="renderRestaurants('${selectedLoc}')">${selectedLoc}</span> ❯ 
-            <span style="color:#002B5B;">${resName}</span>
-        `;
-        
+        breadcrumb.innerHTML = `<span class="breadcrumb-back" onclick="renderRestaurants('${selectedLoc}')">←</span> 餐廳 ❯ ${selectedLoc} ❯ ${resName}`;
         let filteredItems = items.filter(i => i.r_id == r_id);
-        
-        if (filteredItems.length === 0) {
-            listContainer.innerHTML = `<div style="padding: 30px; text-align:center; color:#999;">此餐廳尚無餐點資料。</div>`;
-            return;
-        }
-
-        let html = `
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>餐點</th><th>類別</th><th>熱量</th><th>蛋白質</th><th>價格</th><th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        let html = `<table><thead><tr><th>餐點</th><th>熱量</th><th>蛋白</th><th>價格</th><th>操作</th></tr></thead><tbody>`;
         
         filteredItems.forEach(item => {
-            let cat = item.c_name ? item.c_name : '未分類';
-            let cal = item.calories ? item.calories : '--';
-            let pro = item.protein ? item.protein : '--';
-            let price = item.price ? item.price : '--';
-            
             html += `
                 <tr>
                     <td><strong>${item.item_name}</strong></td>
-                    <td style="color:#888;">${cat}</td>
-                    <td class="td-val">${cal} <span style="font-size:11px; font-weight:normal; color:#999;">kcal</span></td>
-                    <td class="td-pro">${pro} <span style="font-size:11px; font-weight:normal; color:#999;">g</span></td>
-                    <td><strong>$${price}</strong></td>
+                    <td class="td-val">${item.calories}</td>
+                    <td class="td-pro">${item.protein}g</td>
+                    <td>$${item.price}</td>
                     <td>
-                        <span class="action-icon" onclick="alert('準備編輯：${item.item_name}')">✏️</span>
-                        <span class="action-icon delete" onclick="if(confirm('確定刪除 ${item.item_name}？')) alert('已刪除')">🗑️</span>
+                        <span class="action-icon" onclick='openEditModal(${JSON.stringify(item)})'>✏️</span>
+                        <span class="action-icon" style="color:red;" onclick="deleteItem(${item.item_id}, '${item.item_name}')">🗑️</span>
                     </td>
-                </tr>
-            `;
+                </tr>`;
         });
-        
-        html += `</tbody></table></div>`;
+        html += `</tbody></table>`;
         listContainer.innerHTML = html;
     }
 
-    // 載入時預設執行
-    window.onload = function() {
-        renderLocations();
-    };
+    // --- 彈窗與 AJAX 邏輯 ---
+    function openEditModal(item) {
+        document.getElementById('edit-id').value = item.item_id;
+        document.getElementById('edit-name').value = item.item_name;
+        document.getElementById('edit-price').value = item.price;
+        document.getElementById('edit-calories').value = item.calories;
+        document.getElementById('edit-protein').value = item.protein;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+    function saveEdit() {
+        const formData = new FormData();
+        formData.append('action', 'update');
+        formData.append('item_id', document.getElementById('edit-id').value);
+        formData.append('name', document.getElementById('edit-name').value);
+        formData.append('price', document.getElementById('edit-price').value);
+        formData.append('calories', document.getElementById('edit-calories').value);
+        formData.append('protein', document.getElementById('edit-protein').value);
+
+        fetch('manage_menu_api.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) { alert('更新成功！'); location.reload(); }
+            else alert('錯誤：' + data.message);
+        });
+    }
+
+    function deleteItem(id, name) {
+        if(!confirm(`確定刪除「${name}」？`)) return;
+        const formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('item_id', id);
+
+        fetch('manage_menu_api.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) { alert('已刪除'); location.reload(); }
+        });
+    }
+
+    window.onload = renderLocations;
 </script>
 
 <?php include('footer.php'); ?>

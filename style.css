@@ -21,7 +21,6 @@ body {
     box-shadow: 0 0 20px rgba(0,0,0,0.1); /* 淡淡的陰影讓它立體 */
     position: relative; overflow-x: hidden; padding-bottom: 80px;
 }
-
 /* 2. 通用標題區 (Header) */
 .header-blue {
     background-color: var(--fujen-blue);
@@ -92,3 +91,8 @@ body {
     text-decoration: none;
     display: block;
 }
+
+
+
+
+

@@ -24,7 +24,6 @@ if ($res_result && $res_result->num_rows > 0) {
     $res_loc = $res_data['location'];
 }
 
-// 💡 修正 1：移除了 is_vegetarian 後面的多餘逗號
 $sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein, i.is_vegetarian
         FROM items i
         JOIN categories c ON i.c_id = c.c_id
@@ -85,6 +84,11 @@ $result = $conn->query($sql);
         background: #f0f5fa; color: var(--fujen-blue, #002B5B); font-weight: bold; 
     }
     
+    .qty-control { display: flex; align-items: center; gap: 10px; }
+    .qty-btn { width: 45px; height: 45px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 8px; font-size: 20px; cursor: pointer; transition: 0.2s; }
+    .qty-btn:active { background: #eee; }
+    .qty-input { flex: 1; text-align: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+
     .submit-tray-btn {
         width: 100%; background: #7a93ac; color: white; border: none; padding: 15px; 
         border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;
@@ -153,7 +157,6 @@ $result = $conn->query($sql);
                             <span class="date-icon">📅</span>
                             <input type="date" name="eat_date" class="date-input" value="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d'); ?>" required>
                         </div>
-                        <span class="date-hint">可選擇今天或過去的日期</span>
                     </div>
                     
                     <div class="form-group">
@@ -173,6 +176,16 @@ $result = $conn->query($sql);
                         您目前為訪客模式<br>將直接暫存於托盤中
                     </div>
                 <?php endif; ?>
+
+                <div class="form-group">
+                    <label>餐點份數 / 數量</label>
+                    <div class="qty-control">
+                        <button type="button" class="qty-btn" onclick="changeQty(-1)">-</button>
+                        <input type="number" name="quantity" id="modalQty" value="1" min="1" max="99" class="qty-input">
+                        <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                    </div>
+                    <span class="date-hint">如果是鍋貼、水餃，可直接點擊或輸入顆數</span>
+                </div>
                 
                 <button type="submit" class="submit-tray-btn">確認加入</button>
             </div>
@@ -184,13 +197,24 @@ $result = $conn->query($sql);
     function openTrayModal(itemId, itemName) {
         document.getElementById('modalItemId').value = itemId;
         document.getElementById('modalItemName').innerText = itemName;
+        // 開啟時將數量歸 1
+        document.getElementById('modalQty').value = 1;
         document.getElementById('trayModal').style.display = 'flex';
+    }
+
+    function changeQty(amt) {
+        const qtyInput = document.getElementById('modalQty');
+        let currentVal = parseInt(qtyInput.value) || 1;
+        let newVal = currentVal + amt;
+        if (newVal < 1) newVal = 1;
+        qtyInput.value = newVal;
     }
 
     function closeTrayModal() {
         document.getElementById('trayModal').style.display = 'none';
     }
 
+    // 點擊背景關閉
     document.getElementById('trayModal').addEventListener('click', function(e) {
         if (e.target === this) closeTrayModal();
     });
