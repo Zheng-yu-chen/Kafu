@@ -5,9 +5,10 @@ include('header.php');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+// 💡 修正：將 i.item_name 改為 i.name AS item_name，並在 GROUP BY 改為 i.name
 $sql = "SELECT 
             i.item_id, 
-            i.item_name, 
+            i.name AS item_name, 
             r.name AS res_name, 
             r.location,
             AVG(c.rating) AS avg_rating,
@@ -17,7 +18,7 @@ $sql = "SELECT
         JOIN categories cat ON i.c_id = cat.c_id
         JOIN restaurants r ON cat.r_id = r.r_id
         WHERE c.status = 1 
-        GROUP BY i.item_id, i.item_name, r.name, r.location
+        GROUP BY i.item_id, i.name, r.name, r.location
         ORDER BY avg_rating DESC, total_comments DESC";
 
 try {

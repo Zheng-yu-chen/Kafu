@@ -24,7 +24,8 @@ if ($res_result && $res_result->num_rows > 0) {
     $res_loc = $res_data['location'];
 }
 
-$sql = "SELECT i.item_id, i.item_name, i.calories, i.protein 
+// 💡 修正 1：移除了 is_vegetarian 後面的多餘逗號
+$sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein, i.is_vegetarian
         FROM items i
         JOIN categories c ON i.c_id = c.c_id
         WHERE c.r_id = $r_id";
@@ -42,7 +43,6 @@ $result = $conn->query($sql);
     .nutrition { font-size: 13px; margin-top: 5px; color: #666; }
     .pro-tag { color: var(--primary-orange, #FF8C42); font-weight: bold; margin-left: 10px; }
     
-    /* 💡 改成按鈕樣式，移除 href */
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
     .add-btn:active { transform: scale(0.95); }
 
@@ -105,7 +105,7 @@ $result = $conn->query($sql);
         <?php while($row = $result->fetch_assoc()): ?>
             <div class="item-card">
                 <div class="item-info">
-                    <h4><?php echo htmlspecialchars($row['item_name']); ?></h4>
+                    <h4><?php echo htmlspecialchars($row['name']); ?></h4>
                     <div class="nutrition">
                         <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
                         <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
@@ -113,14 +113,14 @@ $result = $conn->query($sql);
                 </div>
                 
                 <?php 
-                    $show_add_btn = true; // 預設訪客跟學生都看得到
+                    $show_add_btn = true; 
                     if (isset($_SESSION['role_id']) && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)) {
-                        $show_add_btn = false; // 店家和管理員隱藏
+                        $show_add_btn = false; 
                     }
                 ?>
                 
                 <?php if ($show_add_btn): ?>
-                    <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['item_name']); ?>')">+</button>
+                    <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name']); ?>')">+</button>
                 <?php endif; ?>
             </div>
         <?php endwhile; ?>
@@ -194,7 +194,6 @@ $result = $conn->query($sql);
         document.getElementById('trayModal').style.display = 'none';
     }
 
-    // 點擊黑色半透明背景時，自動關閉視窗
     document.getElementById('trayModal').addEventListener('click', function(e) {
         if (e.target === this) closeTrayModal();
     });

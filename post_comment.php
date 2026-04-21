@@ -19,9 +19,10 @@ if ($res_query) {
 }
 
 // 2. 撈取所有餐點
+// 💡 修正：將 i.item_name 改為 i.name AS item_name，對應資料庫真實欄位名稱
 $items = [];
 $item_query = $conn->query("
-    SELECT i.item_id, i.item_name, c.r_id 
+    SELECT i.item_id, i.name AS item_name, c.r_id 
     FROM items i 
     JOIN categories c ON i.c_id = c.c_id
 ");
@@ -197,6 +198,6 @@ if ($item_query) {
 </script>
 
 <?php 
-// 💡 修改：改用 include('footer.php') 關閉手機殼並渲染導覽列
+// 💡 確保導覽列正常顯示
 include('footer.php'); 
 ?>
