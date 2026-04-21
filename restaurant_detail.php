@@ -146,36 +146,33 @@ $result = $conn->query($sql);
             <input type="hidden" name="item_id" id="modalItemId" value="">
             
             <div class="modal-body">
-                <div class="form-group">
-                    <label>用餐日期</label>
-                    <div class="date-input-wrapper">
-                        <span class="date-icon">📅</span>
-                        <input type="date" name="eat_date" class="date-input" value="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d'); ?>" required>
+                <?php if (isset($_SESSION['u_id'])): ?>
+                    <div class="form-group">
+                        <label>用餐日期</label>
+                        <div class="date-input-wrapper">
+                            <span class="date-icon">📅</span>
+                            <input type="date" name="eat_date" class="date-input" value="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                        <span class="date-hint">可選擇今天或過去的日期</span>
                     </div>
-                    <span class="date-hint">可選擇今天或過去的日期</span>
-                </div>
-                
-                <div class="form-group">
-                    <label>用餐時段</label>
-                    <div class="meal-grid">
-                        <label class="meal-option">
-                            <input type="radio" name="meal_time" value="早餐" required>
-                            <span>早餐</span>
-                        </label>
-                        <label class="meal-option">
-                            <input type="radio" name="meal_time" value="午餐">
-                            <span>午餐</span>
-                        </label>
-                        <label class="meal-option">
-                            <input type="radio" name="meal_time" value="晚餐">
-                            <span>晚餐</span>
-                        </label>
-                        <label class="meal-option">
-                            <input type="radio" name="meal_time" value="點心">
-                            <span>點心</span>
-                        </label>
+                    
+                    <div class="form-group">
+                        <label>用餐時段</label>
+                        <div class="meal-grid">
+                            <label class="meal-option"><input type="radio" name="meal_time" value="早餐" required><span>早餐</span></label>
+                            <label class="meal-option"><input type="radio" name="meal_time" value="午餐"><span>午餐</span></label>
+                            <label class="meal-option"><input type="radio" name="meal_time" value="晚餐"><span>晚餐</span></label>
+                            <label class="meal-option"><input type="radio" name="meal_time" value="點心"><span>點心</span></label>
+                        </div>
                     </div>
-                </div>
+                <?php else: ?>
+                    <input type="hidden" name="eat_date" value="<?php echo date('Y-m-d'); ?>">
+                    <input type="hidden" name="meal_time" value="全天">
+                    <div style="text-align:center; color:#888; padding: 10px 0 20px; font-size:14px; line-height: 1.5;">
+                        <span style="font-size:24px; display:block; margin-bottom:5px;">👣</span>
+                        您目前為訪客模式<br>將直接暫存於托盤中
+                    </div>
+                <?php endif; ?>
                 
                 <button type="submit" class="submit-tray-btn">確認加入</button>
             </div>

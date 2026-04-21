@@ -6,6 +6,7 @@ session_start();
 $u_id = $_SESSION['u_id'] ?? null; 
 $is_logged_in = ($u_id !== null);
 $user_name = "訪客模式"; $user_account = "尚未登入"; $display_cal = 0; $display_pro = 0;
+$goal_cal = 2000; // 預設目標熱量
 
 if ($is_logged_in) {
     mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -16,7 +17,8 @@ if ($is_logged_in) {
         $user_name = $user_data['name']; $user_account = $user_data['accounts'];
     }
     $today = date('Y-m-d');
-    // 這裡的查詢未來會配合圖表做擴充，目前先抓今日總和
+    
+    // 抓取今日結算總和
     $sql_stats = "SELECT SUM(i.calories) as total_cal, SUM(i.protein) as total_pro 
                   FROM consumptionlogs l JOIN items i ON l.item_id = i.item_id 
                   WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";
@@ -33,11 +35,20 @@ if ($is_logged_in) {
     .avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; }
     .user-info h2 { margin: 0; font-size: 20px; }
     .user-info p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
-    .stats-row { display: flex; gap: 15px; padding: 0 20px; margin-top: -56px; position: relative; z-index: 10; }
-    .stat-card { flex: 1; background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 18px 15px; color: #333; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .stat-label { font-size: 11px; color: #888; margin-bottom: 5px; }
-    .stat-value { font-size: 26px; font-weight: bold; color: var(--fujen-blue, #002B5B); }
-    .stat-unit { font-size: 12px; margin-left: 3px; font-weight: normal; color: #888; }
+    
+    /* 💡 新增：合併後的進度條大卡片 */
+    .stats-card-combined {
+        background: rgba(255, 255, 255, 0.98); border-radius: 15px; padding: 20px;
+        margin: -56px 20px 20px; /* 保持懸浮在藍色背景上的效果 */
+        position: relative; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .summary-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .summary-row h2 { font-size: 16px; color: #333; margin: 0; }
+    .total-cal { font-size: 28px; font-weight: bold; color: var(--primary-orange, #FF8C42); }
+    .progress-box { background: #e0e0e0; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 15px; }
+    .progress-fill { background: #4CAF50; height: 100%; transition: width 0.5s ease; }
+    .protein-info { display: flex; justify-content: space-between; align-items: center; background: #E8F5E9; padding: 12px 15px; border-radius: 10px; color: #2E7D32; font-weight: bold; font-size: 14px; }
+    
     .white-section { background: white; margin: 20px; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .section-header { font-weight: bold; font-size: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
     .menu-link { display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: #333; padding: 12px 0; border-top: 1px solid #f0f0f0; }
@@ -56,15 +67,28 @@ if ($is_logged_in) {
     <?php if (!$is_logged_in): ?><a href="login.php" class="btn-login">登入</a><?php endif; ?>
 </div>
 
-<div class="stats-row">
-    <div class="stat-card">
-        <div class="stat-label">今日熱量</div>
-        <div class="stat-value"><?php echo $display_cal; ?><span class="stat-unit">kcal</span></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">今日蛋白質</div>
-        <div class="stat-value"><?php echo $display_pro; ?><span class="stat-unit">g</span></div>
-    </div>
+<div class="stats-card-combined">
+    <?php if ($is_logged_in): ?>
+        <div class="summary-row">
+            <h2>今日攝取進度</h2>
+            <span class="total-cal"><?php echo $display_cal; ?> <small style="font-size:14px; color:#888;">/ <?php echo $goal_cal; ?> kcal</small></span>
+        </div>
+        
+        <?php $percent = ($display_cal > 0) ? min(($display_cal / $goal_cal) * 100, 100) : 0; ?>
+        <div class="progress-box">
+            <div class="progress-fill" style="width: <?php echo $percent; ?>%;"></div>
+        </div>
+        
+        <div class="protein-info">
+            <span>💪 今日總蛋白質</span>
+            <span style="font-size: 18px;"><?php echo $display_pro; ?> g</span>
+        </div>
+    <?php else: ?>
+        <div style="text-align:center; padding: 10px 0;">
+            <p style="color: #888; font-size: 14px; margin: 0 0 10px;">目前為訪客模式，無法顯示攝取進度</p>
+            <a href="login.php" style="color: var(--primary-orange, #FF8C42); font-weight: bold; text-decoration: none;">點此登入或註冊</a>
+        </div>
+    <?php endif; ?>
 </div>
 
 <div class="white-section">
@@ -105,6 +129,7 @@ if ($is_logged_in) {
 <?php if ($is_logged_in): ?><a href="logout.php" class="logout-link">登出</a><?php endif; ?>
 
 <?php if ($is_logged_in): ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     if(document.getElementById('trendChart')) {
         const ctx = document.getElementById('trendChart').getContext('2d');
