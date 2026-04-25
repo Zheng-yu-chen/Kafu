@@ -111,8 +111,26 @@ try {
     .btn-save { flex: 2; background: #002B5B; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .btn-cancel { flex: 1; background: #eee; border: none; padding: 12px; border-radius: 8px; cursor: pointer; }
 
-    .logout-section { padding: 20px; margin-bottom: 80px; }
-    .logout-btn { display: block; text-align: center; padding: 16px; background: white; color: #F44336; text-decoration: none; border-radius: 12px; border: 1px solid #FFCDD2; font-weight: bold; }
+    .action-icons { display: flex; flex-direction: column; gap: 5px; }
+    .btn-edit { background: #002B5B; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    .btn-delete { background: #F44336; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+
+    /* 💡 統一的登出按鈕樣式 */
+    .logout-section { text-align: center; margin: 30px 0 100px; }
+    .logout-btn {
+        display: inline-block;
+        background-color: white;
+        color: #F44336;
+        border: 1.5px solid #FFCDD2;
+        padding: 10px 40px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: bold;
+        transition: 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+    .logout-btn:active { background-color: #FFF5F5; transform: scale(0.95); }
 </style>
 
 <div class="admin-header">
@@ -133,9 +151,9 @@ try {
                 <span style="color:#999; font-size:11px;"><?php echo $rev['created_at']; ?></span>
                 <p style="margin:10px 0;"><?php echo nl2br(htmlspecialchars($rev['content'])); ?></p>
                 <div style="display:flex; gap:10px;">
-    <button onclick="reviewAction(<?php echo $rev['com_id']; ?>, 'approve')" style="background:#4CAF50; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">通過</button>
-    <button onclick="reviewAction(<?php echo $rev['com_id']; ?>, 'reject')" style="background:#F44336; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">拒絕</button>
-</div>
+                    <button onclick="reviewAction(<?php echo $rev['com_id']; ?>, 'approve')" style="background:#4CAF50; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">通過</button>
+                    <button onclick="reviewAction(<?php echo $rev['com_id']; ?>, 'reject')" style="background:#F44336; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">拒絕</button>
+                </div>
             </div>
         <?php endwhile; ?>
     <?php else: ?>
@@ -151,7 +169,7 @@ try {
 </div>
 
 <div class="logout-section">
-    <a href="logout.php" class="logout-btn">登出系統</a>
+    <a href="logout.php" class="logout-btn">登出</a>
 </div>
 
 <div id="editModal" class="modal">
@@ -183,27 +201,28 @@ try {
 
 <script>
     function reviewAction(id, action) {
-    if (action === 'reject' && !confirm('確定要拒絕並刪除這則評價嗎？')) return;
+        if (action === 'reject' && !confirm('確定要拒絕並刪除這則評價嗎？')) return;
 
-    const formData = new FormData();
-    formData.append('action', action);
-    formData.append('com_id', id);
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('com_id', id);
 
-    fetch('manage_review_api.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert(action === 'approve' ? '評價已通過審核！' : '評價已刪除。');
-            location.reload(); // 重新整理頁面更新待審核數量
-        } else {
-            alert('操作失敗：' + data.message);
-        }
-    })
-    .catch(err => console.error('Error:', err));
-}
+        fetch('manage_review_api.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(action === 'approve' ? '評價已通過審核！' : '評價已刪除。');
+                location.reload(); 
+            } else {
+                alert('操作失敗：' + data.message);
+            }
+        })
+        .catch(err => console.error('Error:', err));
+    }
+
     const restaurants = <?php echo json_encode($restaurants); ?>;
     const items = <?php echo json_encode($items); ?>;
     const locations = [...new Set(restaurants.map(r => r.location))].filter(l => l);
@@ -237,7 +256,7 @@ try {
 
     function renderRestaurants(loc) {
         selectedLoc = loc;
-        breadcrumb.innerHTML = `<span class="breadcrumb-back" onclick="renderLocations()">←</span> <span onclick="renderLocations()">餐廳</span> ❯ ${loc}`;
+        breadcrumb.innerHTML = `<span class="breadcrumb-back" onclick="renderLocations()">←</span> <span onclick="renderLocations()" style="cursor:pointer;">餐廳</span> ❯ ${loc}`;
         let html = '';
         restaurants.filter(r => r.location === loc).forEach(res => {
             html += `
@@ -262,8 +281,10 @@ try {
                     <td class="td-pro">${item.protein}g</td>
                     <td>$${item.price}</td>
                     <td>
-                        <span class="action-icon" onclick='openEditModal(${JSON.stringify(item)})'>✏️</span>
-                        <span class="action-icon" style="color:red;" onclick="deleteItem(${item.item_id}, '${item.item_name}')">🗑️</span>
+                        <div class="action-icons">
+                            <button class="btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>編輯</button>
+                            <button class="btn-delete" onclick="deleteItem(${item.item_id}, '${item.item_name}')">刪除</button>
+                        </div>
                     </td>
                 </tr>`;
         });
@@ -271,7 +292,6 @@ try {
         listContainer.innerHTML = html;
     }
 
-    // --- 彈窗與 AJAX 邏輯 ---
     function openEditModal(item) {
         document.getElementById('edit-id').value = item.item_id;
         document.getElementById('edit-name').value = item.item_name;

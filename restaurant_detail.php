@@ -184,7 +184,6 @@ $result = $conn->query($sql);
                         <input type="number" name="quantity" id="modalQty" value="1" min="1" max="99" class="qty-input">
                         <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
                     </div>
-                    <span class="date-hint">如果是鍋貼、水餃，可直接點擊或輸入顆數</span>
                 </div>
                 
                 <button type="submit" class="submit-tray-btn">確認加入</button>

@@ -89,7 +89,23 @@ if ($is_logged_in) {
     .menu-text h4 { margin: 0; font-size: 14px; }
     .menu-text p { margin: 4px 0 0; font-size: 12px; color: #888; }
     .btn-login-top { position: absolute; right: 20px; top: 60px; background: white; color: #002B5B; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; }
-    .logout-link { display: flex; justify-content: center; padding: 20px; color: #ff4d4d; font-size: 14px; text-decoration: none; font-weight: bold; }
+    
+    /* 💡 統一的登出按鈕樣式 */
+    .logout-section { text-align: center; margin: 30px 0 100px; }
+    .logout-btn {
+        display: inline-block;
+        background-color: white;
+        color: #F44336;
+        border: 1.5px solid #FFCDD2;
+        padding: 10px 40px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: bold;
+        transition: 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+    .logout-btn:active { background-color: #FFF5F5; transform: scale(0.95); }
 </style>
 
 <div class="profile-header">
@@ -120,7 +136,7 @@ if ($is_logged_in) {
     <?php else: ?>
         <div style="text-align:center; padding: 10px 0;">
             <p style="color: #888; margin-bottom: 10px;">目前為訪客模式，無法紀錄數據</p>
-            <a href="login.php" style="color: #FF8C42; font-weight: bold; text-decoration: none;">點此登入或註冊 ❯</a>
+            <a href="login.php" style="color: #FF8C42; font-weight: bold; text-decoration: none;">點此登入 ❯</a>
         </div>
     <?php endif; ?>
 </div>
@@ -156,7 +172,9 @@ if ($is_logged_in) {
 </div>
 
 <?php if ($is_logged_in): ?>
-    <a href="logout.php" class="logout-link">登出帳號</a>
+    <div class="logout-section">
+        <a href="logout.php" class="logout-btn">登出</a>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>

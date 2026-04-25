@@ -90,14 +90,22 @@ try {
     .review-stars { color: #FFC107; font-size: 12px; }
     .review-text { font-size: 13px; color: #555; line-height: 1.5; margin: 0; }
 
-    /* 💡 底部登出按鈕 */
-    .logout-section { margin: 10px 15px 100px; }
+    /* 💡 統一的登出按鈕樣式 */
+    .logout-section { text-align: center; margin: 30px 0 100px; }
     .logout-btn {
-        background: white; display: flex; align-items: center; justify-content: center;
-        padding: 16px; border-radius: 12px; color: #FF4D4D; text-decoration: none;
-        font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.05); gap: 10px; border: 1px solid #FFEBEB;
+        display: inline-block;
+        background-color: white;
+        color: #F44336;
+        border: 1.5px solid #FFCDD2;
+        padding: 10px 40px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: bold;
+        transition: 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
     }
-    .logout-btn:active { background: #FFF5F5; transform: scale(0.98); }
+    .logout-btn:active { background-color: #FFF5F5; transform: scale(0.95); }
 </style>
 
 <div class="store-header">

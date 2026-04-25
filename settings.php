@@ -12,7 +12,6 @@ $u_id = $_SESSION['u_id'];
 
 // 處理儲存邏輯
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 💡 新增：接收姓名參數
     $name = $_POST['name']; 
     $goal_cal = intval($_POST['goal_cal']);
     $goal_pro = intval($_POST['goal_pro']);
@@ -22,7 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $notify_meal = isset($_POST['notify_meal']) ? 1 : 0;
     $notify_pickup = isset($_POST['notify_pickup']) ? 1 : 0;
     
-    // 💡 修改 SQL：加入 name = ?
     $sql = "UPDATE accounts SET 
             name = ?, 
             goal_cal = ?, goal_pro = ?, 
@@ -44,7 +42,25 @@ $user = $res->fetch_assoc();
 ?>
 
 <style>
-    .settings-container { max-width: 500px; margin: auto; padding: 20px; background: #f8f9fa; min-height: 100vh; font-family: sans-serif; }
+    body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; padding-bottom: 80px; }
+    
+    /* 💡 統一的深藍色標題區塊樣式 */
+    .header-section { 
+        background-color: var(--fujen-blue, #002B5B); 
+        color: white; padding: 30px 20px 20px; 
+        position: relative; 
+    }
+    
+    /* 💡 左上角返回按鈕 */
+    .back-btn { 
+        color: white; text-decoration: none; font-size: 14px; 
+        display: inline-block; margin-bottom: 15px; opacity: 0.9; 
+    }
+    
+    .header-title h2 { margin: 0; font-size: 24px; color: white; }
+    .header-title p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
+
+    .settings-container { max-width: 500px; margin: auto; padding: 20px; }
     .section-title { font-size: 1.1em; font-weight: bold; color: #002B5B; margin: 25px 0 10px 5px; }
     .settings-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f2f2f2; }
@@ -56,23 +72,30 @@ $user = $res->fetch_assoc();
     
     /* 輸入框樣式優化 */
     .setting-input { border: none; text-align: right; color: #002B5B; font-weight: bold; font-size: 1.1em; outline: none; background: transparent; }
-    .name-input { width: 150px; } /* 姓名寬度稍微長一點 */
+    .name-input { width: 150px; } 
     .num-input { width: 80px; }
     
     .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
     .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-    input:checked + .slider { background-color: #002B5B; }
+    input:checked + .slider { background-color: var(--fujen-blue, #002B5B); }
     input:checked + .slider:before { transform: translateX(20px); }
 
-    .save-btn { width: 100%; padding: 16px; background: #002B5B; color: white; border: none; border-radius: 12px; font-size: 1em; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    .save-btn { width: 100%; padding: 16px; background: var(--fujen-blue, #002B5B); color: white; border: none; border-radius: 12px; font-size: 1em; font-weight: bold; margin-top: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,43,91,0.2); transition: 0.2s; }
+    .save-btn:active { transform: scale(0.98); }
 </style>
+
+<div class="header-section">
+    <a href="profile.php" class="back-btn">❮ 返回個人檔案</a>
+    <div class="header-title">
+        <h2>⚙️ 設定</h2>
+        <p>管理您的個人資料與系統偏好</p>
+    </div>
+</div>
 
 <div class="settings-container">
     <form method="POST">
-        <h2 style="color: #002B5B;">⚙️ 設定</h2>
-
         <div class="section-title">👤 個人資料</div>
         <div class="settings-card">
             <div class="setting-item">
@@ -145,22 +168,9 @@ $user = $res->fetch_assoc();
                     <span class="slider"></span>
                 </label>
             </div>
-            <div class="setting-item">
-                <div class="item-label">
-                    <span class="label-main">取餐通知</span>
-                    <span class="label-sub">餐點準備完成時通知您</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" name="notify_pickup" <?php if($user['notify_pickup']) echo 'checked'; ?>>
-                    <span class="slider"></span>
-                </label>
-            </div>
         </div>
 
         <button type="submit" class="save-btn">儲存設定</button>
-        <div style="text-align:center; margin-top:20px; padding-bottom:30px;">
-            <a href="profile.php" style="color:#888; text-decoration:none; font-size:0.9em;">返回個人中心</a>
-        </div>
     </form>
 </div>
 

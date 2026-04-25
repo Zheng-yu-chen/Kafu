@@ -54,33 +54,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .login-page::-webkit-scrollbar { display: none; }
 
+    /* 💡 新增：左上角懸浮返回鍵 */
+    .back-btn-login {
+        position: absolute;
+        top: 25px;
+        left: 20px;
+        color: white;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: bold;
+        opacity: 0.9;
+        transition: 0.2s;
+        z-index: 1000;
+    }
+    .back-btn-login:active { transform: scale(0.95); opacity: 1; }
+
     /* Logo 區塊 */
     .logo-section { text-align: center; margin-bottom: 25px; }
     /* 移除白色背景與框線，讓 Logo 直接浮在藍色背景上 */
-.logo-box { 
-    background-color: transparent; /* 設為透明 */
-    border-radius: 0; 
-    padding: 10px; 
-    display: inline-block; 
-    box-shadow: none; /* 去掉陰影 */
-}
+    .logo-box { 
+        background-color: transparent; 
+        border-radius: 0; 
+        padding: 10px; 
+        display: inline-block; 
+        box-shadow: none; 
+    }
 
-/* 放大圖片讓它更顯眼，並確保文字顏色適合深色背景 */
-.logo-box img { 
-    max-width: 140px; /* 稍微加大 Logo */
-    height: auto; 
-    display: block; 
-    margin: 0 auto; 
-}
+    /* 放大圖片讓它更顯眼，並確保文字顏色適合深色背景 */
+    .logo-box img { 
+        max-width: 140px; 
+        height: auto; 
+        display: block; 
+        margin: 0 auto; 
+    }
 
-/* 將 Logo 下方的文字改為白色，否則在深藍背景下會看不清楚 */
-.logo-box p { 
-    color: white; 
-    font-size: 15px; 
-    margin-top: 12px; 
-    font-weight: bold; 
-    letter-spacing: 1px;
-}
+    /* 將 Logo 下方的文字改為白色，否則在深藍背景下會看不清楚 */
+    .logo-box p { 
+        color: white; 
+        font-size: 15px; 
+        margin-top: 12px; 
+        font-weight: bold; 
+        letter-spacing: 1px;
+    }
+    
     /* 白色登入卡片 */
     .form-container {
         background: white; width: 100%; max-width: 320px;
@@ -111,6 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </style>
 
 <div class="login-page">
+    
+    <a href="profile.php" class="back-btn-login">❮ 返回</a>
     
     <div class="logo-section">
         <div class="logo-box">
