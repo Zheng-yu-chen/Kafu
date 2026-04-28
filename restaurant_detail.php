@@ -39,8 +39,11 @@ $result = $conn->query($sql);
     .menu-container { padding: 20px; }
     .item-card { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .item-info h4 { margin: 0; font-size: 16px; color: var(--fujen-blue, #002B5B); }
-    .nutrition { font-size: 13px; margin-top: 5px; color: #666; }
-    .pro-tag { color: var(--primary-orange, #FF8C42); font-weight: bold; margin-left: 10px; }
+    .nutrition { font-size: 13px; margin-top: 8px; color: #666; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    
+    /* 💡 新增的價格標籤樣式 */
+    .price-tag { color: #E53935; font-weight: bold; font-size: 14px; }
+    .pro-tag { color: var(--primary-orange, #FF8C42); font-weight: bold; }
     
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
     .add-btn:active { transform: scale(0.95); }
@@ -72,7 +75,6 @@ $result = $conn->query($sql);
     .date-input-wrapper { position: relative; }
     .date-icon { position: absolute; left: 12px; top: 12px; font-size: 16px; color: #555; pointer-events: none; }
     .date-input { width: 100%; padding: 12px 12px 12px 35px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
-    .date-hint { display: block; color: #888; font-size: 11px; margin-top: 5px; }
     
     .meal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .meal-option input { display: none; }
@@ -111,6 +113,7 @@ $result = $conn->query($sql);
                 <div class="item-info">
                     <h4><?php echo htmlspecialchars($row['name']); ?></h4>
                     <div class="nutrition">
+                        <span class="price-tag">💰 $<?php echo floatval($row['price']); ?></span>
                         <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
                         <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
                     </div>
