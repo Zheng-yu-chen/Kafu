@@ -17,24 +17,24 @@ if (isset($_SESSION['role_id'])) {
 
 <div class="footer-nav">
     <a href="index.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>">
-        <div class="nav-icon">🏠</div>
+        <div class="nav-icon"><img src="icon/home_icon.png" alt="首頁"></div>
         <span>首頁</span>
     </a>
 
     <?php if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] == 3): ?>
     <a href="tray.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'tray.php') ? 'active' : ''; ?>">
-        <div class="nav-icon">📋</div>
+        <div class="nav-icon"><img src="icon/tray_icon.png" alt="托盤"></div>
         <span>托盤</span>
     </a>
     <?php endif; ?>
 
     <a href="comments.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'comments.php') ? 'active' : ''; ?>">
-        <div class="nav-icon">💬</div>
+        <div class="nav-icon"><img src="icon/comment_icon.png" alt="評價"></div>
         <span>評價</span>
     </a>
 
     <a href="<?php echo $profile_url; ?>" class="nav-item <?php echo (in_array(basename($_SERVER['PHP_SELF']), ['profile.php', 'store_profile.php', 'admin_dashboard.php'])) ? 'active' : ''; ?>">
-        <div class="nav-icon">👤</div>
+        <div class="nav-icon"><img src="icon/profile_icon.png" alt="我的"></div>
         <span>我的</span>
     </a>
 </div>
@@ -50,6 +50,20 @@ if (isset($_SESSION['role_id'])) {
     .nav-item { flex: 1; text-align: center; text-decoration: none; color: #bbb; font-size: 12px; transition: 0.2s; }
     .nav-item.active { color: var(--fujen-blue, #002B5B); font-weight: bold; }
     .nav-icon { font-size: 20px; margin-bottom: 2px; }
+
+    .footer-nav .nav-icon img {
+    width: 24px !important;   
+    height: 24px !important;  
+    object-fit: contain !important; 
+    display: block !important;
+    margin: 0 auto 4px !important; 
+    }
+
+    /* 點擊時或在該頁面時，圖片微微放大 */
+    .footer-nav .nav-item.active .nav-icon img {
+        transform: scale(1.15);
+        transition: transform 0.2s ease;
+    }
 </style>
 
 </div> </body>

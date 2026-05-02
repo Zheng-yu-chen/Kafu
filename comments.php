@@ -5,7 +5,6 @@ include('header.php');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-// 💡 修正：將 i.item_name 改為 i.name AS item_name，並在 GROUP BY 改為 i.name
 $sql = "SELECT 
             i.item_id, 
             i.name AS item_name, 
@@ -31,13 +30,15 @@ try {
 <style>
     .header-section {
         background-color: var(--fujen-blue, #002B5B);
-        color: white; padding: 30px 20px 20px;
+        color: white; 
+        padding: 30px 20px 40px; 
     }
     .header-title { text-align: left; margin-bottom: 15px; }
     .header-title h1 { margin: 0; font-size: 24px; }
     .header-title p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
 
-    .search-container { position: relative; margin-bottom: 15px; }
+    /* 💡 修正：把 margin-bottom 加大到 25px，讓底下的篩選按鈕不會貼得太緊 */
+    .search-container { position: relative; margin-bottom: 25px; }
     .search-input { width: 100%; padding: 12px 15px 12px 40px; border-radius: 25px; border: none; font-size: 14px; outline: none; box-sizing: border-box; }
     .search-icon { position: absolute; left: 15px; top: 12px; color: #999; }
 
@@ -46,9 +47,26 @@ try {
     .filter-tag { background: rgba(255,255,255,0.2); color: white; padding: 6px 18px; border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
     .filter-tag.active { background: white; color: var(--fujen-blue, #002B5B); font-weight: bold; }
 
-    .share-banner { background: var(--primary-orange, #FF8C42); color: white; margin: 15px 20px; padding: 15px; border-radius: 12px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; gap: 10px; box-shadow: 0 4px 10px rgba(255,140,66,0.3); }
+    .share-banner { 
+        background: var(--primary-orange, #FF8C42); 
+        color: white; 
+        margin: -20px 20px 15px; 
+        position: relative; 
+        z-index: 10; 
+        padding: 15px; 
+        border-radius: 12px; 
+        display: flex; justify-content: center; align-items: center; 
+        text-decoration: none; font-weight: bold; gap: 10px; 
+        box-shadow: 0 4px 10px rgba(255,140,66,0.3); 
+    }
 
-    .comment-list { padding: 0 20px; }
+    .comment-list { 
+        padding: 0 20px; 
+        position: relative;
+        z-index: 5;
+        margin-top: <?php echo (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3) ? '0' : '-20px'; ?>;
+    }
+    
     .comment-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; text-decoration: none; color: inherit; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .item-img { width: 60px; height: 60px; border-radius: 10px; background: #f4f7f9; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 28px; flex-shrink: 0; }
     .comment-info { flex: 1; overflow: hidden; }
