@@ -113,7 +113,7 @@ $result = $conn->query($sql);
                 <div class="item-info">
                     <h4><?php echo htmlspecialchars($row['name']); ?></h4>
                     <div class="nutrition">
-                        <span class="price-tag">💰 $<?php echo floatval($row['price']); ?></span>
+                        <span class="price-tag">$<?php echo floatval($row['price']); ?></span>
                         <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
                         <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
                     </div>

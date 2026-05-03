@@ -26,51 +26,34 @@ if ($is_logged_in) {
         $goal_cal = $row['goal_cal'] ?: 2000;
     }
 
-   // B. 抓取今日進度 (包含學餐與手動輸入)
-$today = date('Y-m-d');
-$sql_stats = "SELECT 
-                SUM(IFNULL(i.calories, l.total_calories)) as total_cal, 
-                SUM(IFNULL(i.protein, l.total_protein)) as total_pro 
-              FROM consumptionlogs l 
-              LEFT JOIN items i ON l.item_id = i.item_id 
-              WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";
+    // B. 抓取今日進度 (包含學餐與手動輸入)
+    $today = date('Y-m-d');
+    $sql_stats = "SELECT 
+                    SUM(IFNULL(i.calories, l.total_calories)) as total_cal, 
+                    SUM(IFNULL(i.protein, l.total_protein)) as total_pro 
+                  FROM consumptionlogs l 
+                  LEFT JOIN items i ON l.item_id = i.item_id 
+                  WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";
 
-$stats_result = $conn->query($sql_stats);
-if ($stats_result && $stats = $stats_result->fetch_assoc()) {
-    $display_cal = (int)($stats['total_cal'] ?? 0);
-    $display_pro = (int)($stats['total_pro'] ?? 0);
-}
+    $stats_result = $conn->query($sql_stats);
+    if ($stats_result && $stats = $stats_result->fetch_assoc()) {
+        $display_cal = (int)($stats['total_cal'] ?? 0);
+        $display_pro = (int)($stats['total_pro'] ?? 0);
+    }
 
     // C. 抓取過去 7 天趨勢 (包含學餐與手動輸入)
-$sql_trend = "SELECT 
-                DATE(l.recorded_at) as log_date, 
-                SUM(IFNULL(i.calories, l.total_calories)) as daily_cal 
-              FROM consumptionlogs l
-              LEFT JOIN items i ON l.item_id = i.item_id
-              WHERE l.u_id = $u_id AND l.recorded_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-              GROUP BY DATE(l.recorded_at)
-              ORDER BY log_date ASC";
+    $sql_trend = "SELECT 
+                    DATE(l.recorded_at) as log_date, 
+                    SUM(IFNULL(i.calories, l.total_calories)) as daily_cal 
+                  FROM consumptionlogs l
+                  LEFT JOIN items i ON l.item_id = i.item_id
+                  WHERE l.u_id = $u_id AND l.recorded_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                  GROUP BY DATE(l.recorded_at)
+                  ORDER BY log_date ASC";
 
-$trend_result = $conn->query($sql_trend);
+    $trend_result = $conn->query($sql_trend);
 
-// 初始化 7 天陣列 (這部分保持不變，確保圖表不會斷線)
-$trend_map = [];
-for ($i = 6; $i >= 0; $i--) {
-    $d = date('Y-m-d', strtotime("-$i days"));
-    $trend_map[$d] = 0;
-}
-while ($trend_row = $trend_result->fetch_assoc()) {
-    $trend_map[$trend_row['log_date']] = (int)$trend_row['daily_cal'];
-}
-
-$chart_labels = [];
-$chart_data = [];
-foreach ($trend_map as $date => $cal) {
-    $chart_labels[] = date('m/d', strtotime($date));
-    $chart_data[] = $cal;
-}
-    
-    // 初始化 7 天陣列，確保圖表連續
+    // 初始化 7 天陣列，確保圖表連續 (💡 已經刪除重複的區塊)
     $trend_map = [];
     for ($i = 6; $i >= 0; $i--) {
         $d = date('Y-m-d', strtotime("-$i days"));
@@ -79,6 +62,9 @@ foreach ($trend_map as $date => $cal) {
     while ($trend_row = $trend_result->fetch_assoc()) {
         $trend_map[$trend_row['log_date']] = (int)$trend_row['daily_cal'];
     }
+
+    $chart_labels = [];
+    $chart_data = [];
     foreach ($trend_map as $date => $cal) {
         $chart_labels[] = date('m/d', strtotime($date));
         $chart_data[] = $cal;
