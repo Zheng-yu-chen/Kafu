@@ -89,7 +89,7 @@ $user = $res->fetch_assoc();
 <div class="header-section">
     <a href="profile.php" class="back-btn">❮ 返回個人檔案</a>
     <div class="header-title">
-        <h2>⚙️ 設定</h2>
+        <h2>設定</h2>
         <p>管理您的個人資料與系統偏好</p>
     </div>
 </div>

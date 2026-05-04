@@ -12,6 +12,10 @@ $user_name = "訪客模式";
 $user_account = "尚未登入"; 
 $display_cal = 0; 
 $display_pro = 0;
+// 💡 新增：價格、脂肪、碳水的變數
+$display_price = 0;
+$display_fat = 0;
+$display_carbs = 0;
 $goal_cal = 2000; 
 $chart_labels = [];
 $chart_data = [];
@@ -26,11 +30,14 @@ if ($is_logged_in) {
         $goal_cal = $row['goal_cal'] ?: 2000;
     }
 
-    // B. 抓取今日進度 (包含學餐與手動輸入)
+    // B. 💡 抓取今日進度：修改 SQL，一併加總 price, fat, carbs
     $today = date('Y-m-d');
     $sql_stats = "SELECT 
                     SUM(IFNULL(i.calories, l.total_calories)) as total_cal, 
-                    SUM(IFNULL(i.protein, l.total_protein)) as total_pro 
+                    SUM(IFNULL(i.protein, l.total_protein)) as total_pro,
+                    SUM(IFNULL(i.price, 0)) as total_price,
+                    SUM(IFNULL(i.fat, 0)) as total_fat,
+                    SUM(IFNULL(i.carbs, 0)) as total_carbs
                   FROM consumptionlogs l 
                   LEFT JOIN items i ON l.item_id = i.item_id 
                   WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";
@@ -38,7 +45,10 @@ if ($is_logged_in) {
     $stats_result = $conn->query($sql_stats);
     if ($stats_result && $stats = $stats_result->fetch_assoc()) {
         $display_cal = (int)($stats['total_cal'] ?? 0);
-        $display_pro = (int)($stats['total_pro'] ?? 0);
+        $display_pro = (float)($stats['total_pro'] ?? 0);
+        $display_price = (float)($stats['total_price'] ?? 0);
+        $display_fat = (float)($stats['total_fat'] ?? 0);
+        $display_carbs = (float)($stats['total_carbs'] ?? 0);
     }
 
     // C. 抓取過去 7 天趨勢 (包含學餐與手動輸入)
@@ -53,7 +63,7 @@ if ($is_logged_in) {
 
     $trend_result = $conn->query($sql_trend);
 
-    // 初始化 7 天陣列，確保圖表連續 (💡 已經刪除重複的區塊)
+    // 初始化 7 天陣列，確保圖表連續
     $trend_map = [];
     for ($i = 6; $i >= 0; $i--) {
         $d = date('Y-m-d', strtotime("-$i days"));
@@ -84,35 +94,38 @@ if ($is_logged_in) {
         margin: -40px 20px 20px; position: relative; z-index: 10; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
-    .summary-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-    .summary-row h2 { font-size: 16px; color: #333; margin: 0; }
-    .total-cal { font-size: 28px; font-weight: bold; color: #FF8C42; }
+    
     .progress-box { background: #e0e0e0; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 15px; }
     .progress-fill { background: #4CAF50; height: 100%; transition: width 0.6s ease; }
-    .protein-info { display: flex; justify-content: space-between; align-items: center; background: #E8F5E9; padding: 12px 15px; border-radius: 10px; color: #2E7D32; font-weight: bold; font-size: 14px; }
     
+    /* 💡 全新設計的總計排版：第一排 (價格與熱量) */
+    .summary-main-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; }
+    .total-price { font-size: 20px; font-weight: bold; color: #E53935; } 
+    .total-cal { color: var(--primary-orange, #FF8C42); font-size: 32px; font-weight: 900; line-height: 1; }
+    .total-cal small { font-size: 14px; font-weight: normal; margin-left: 5px; color: #888; }
+    
+    /* 💡 全新設計的總計排版：第二排 (三大營養素) */
+    .summary-macro-row { display: flex; justify-content: space-between; background: #f5f5f5; padding: 12px 0; border-radius: 10px; margin-top: 15px; }
+    .macro-item { text-align: center; flex: 1; }
+    .macro-label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+    .macro-val { font-size: 15px; font-weight: bold; color: #333; }
+    .macro-pro { color: #1976d2; border-right: 1px solid #ddd; } 
+    .macro-fat { color: #fbc02d; border-right: 1px solid #ddd; } 
+    .macro-carbs { color: #388e3c; } 
+
     .white-section { background: white; margin: 20px; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .section-header { font-weight: bold; font-size: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+    
+    .header-icon { width: 22px; height: 22px; object-fit: contain; }
+    .empty-chart-icon { width: 50px; height: 50px; object-fit: contain; margin-bottom: 10px; opacity: 0.5; }
+
     .menu-link { display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: #333; padding: 12px 0; border-top: 1px solid #f0f0f0; }
     .menu-text h4 { margin: 0; font-size: 14px; }
     .menu-text p { margin: 4px 0 0; font-size: 12px; color: #888; }
     .btn-login-top { position: absolute; right: 20px; top: 60px; background: white; color: #002B5B; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; }
     
-    /* 💡 統一的登出按鈕樣式 */
     .logout-section { text-align: center; margin: 30px 0 100px; }
-    .logout-btn {
-        display: inline-block;
-        background-color: white;
-        color: #F44336;
-        border: 1.5px solid #FFCDD2;
-        padding: 10px 40px;
-        border-radius: 25px;
-        text-decoration: none;
-        font-size: 15px;
-        font-weight: bold;
-        transition: 0.2s;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-    }
+    .logout-btn { display: inline-block; background-color: white; color: #F44336; border: 1.5px solid #FFCDD2; padding: 10px 40px; border-radius: 25px; text-decoration: none; font-size: 15px; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
     .logout-btn:active { background-color: #FFF5F5; transform: scale(0.95); }
 </style>
 
@@ -129,17 +142,33 @@ if ($is_logged_in) {
 
 <div class="stats-card-combined">
     <?php if ($is_logged_in): ?>
-        <div class="summary-row">
-            <h2>今日攝取進度</h2>
-            <span class="total-cal"><?php echo $display_cal; ?> <small style="font-size:14px; color:#888;">/ <?php echo $goal_cal; ?> kcal</small></span>
+        <h2 style="font-size: 16px; color: #333; margin: 0 0 12px 0;">今日攝取進度</h2>
+        
+        <!-- 💡 價格與大字體熱量 -->
+        <div class="summary-main-row">
+            <div class="total-price">$<?php echo floatval($display_price); ?></div>
+            <div class="total-cal">🔥<?php echo $display_cal; ?> <small>/ <?php echo $goal_cal; ?> kcal</small></div>
         </div>
+
         <?php $percent = ($goal_cal > 0) ? min(($display_cal / $goal_cal) * 100, 100) : 0; ?>
         <div class="progress-box">
             <div class="progress-fill" style="width: <?php echo $percent; ?>%;"></div>
         </div>
-        <div class="protein-info">
-            <span>💪 今日總蛋白質</span>
-            <span style="font-size: 18px;"><?php echo $display_pro; ?> g</span>
+        
+        <!-- 💡 三大營養素並排 -->
+        <div class="summary-macro-row">
+            <div class="macro-item macro-pro">
+                <span class="macro-label">蛋白質</span>
+                <span class="macro-val"><?php echo number_format($display_pro, 1); ?> g</span>
+            </div>
+            <div class="macro-item macro-fat">
+                <span class="macro-label">脂肪</span>
+                <span class="macro-val"><?php echo number_format($display_fat, 1); ?> g</span>
+            </div>
+            <div class="macro-item macro-carbs">
+                <span class="macro-label">碳水</span>
+                <span class="macro-val"><?php echo number_format($display_carbs, 1); ?> g</span>
+            </div>
         </div>
     <?php else: ?>
         <div style="text-align:center; padding: 10px 0;">
@@ -150,19 +179,26 @@ if ($is_logged_in) {
 </div>
 
 <div class="white-section">
-    <div class="section-header"><span>📈</span> 本週攝取趨勢</div>
+    <div class="section-header">
+        <img src="icon/diagram_icon.png" alt="趨勢" class="header-icon"> 
+        本週攝取趨勢
+    </div>
+    
     <?php if ($is_logged_in): ?>
         <canvas id="trendChart" height="180"></canvas>
     <?php else: ?>
         <div style="text-align:center; padding:30px 0; color:#ccc;">
-            <div style="font-size:40px;">📊</div>
+            <div><img src="icon/diagram_icon.png" alt="圖表" class="empty-chart-icon"></div>
             <p>登入後解鎖趨勢分析</p>
         </div>
     <?php endif; ?>
 </div>
 
 <div class="white-section">
-    <div class="section-header"><span>🛠️</span> 個人服務</div>
+    <div class="section-header">
+        <img src="icon/settings_icon.png" alt="設定" class="header-icon"> 
+        個人服務
+    </div>
     <a href="<?php echo $is_logged_in ? 'history.php' : 'login.php'; ?>" class="menu-link">
         <div class="menu-text">
             <h4>飲食歷史紀錄</h4>

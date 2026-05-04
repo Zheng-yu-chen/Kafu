@@ -227,10 +227,6 @@ $result = $conn->query($sql);
             <?php endwhile; ?>
             
         <?php else: ?>
-            <!-- =============================== -->
-            <!-- 💡 模式 B：顯示原本的【餐廳】列表   -->
-            <!-- =============================== -->
-            <h4 style="margin-top:0; margin-bottom:15px; color:#666;">推薦店家：</h4>
             <?php while($row = $result->fetch_assoc()): ?>
                 <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="res-card">
                     <div class="res-img">

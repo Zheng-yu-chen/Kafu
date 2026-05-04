@@ -39,25 +39,34 @@ $result = $conn->query($sql);
     .menu-container { padding: 20px; }
     .item-card { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .item-info h4 { margin: 0; font-size: 16px; color: var(--fujen-blue, #002B5B); }
-    /* .nutrition { font-size: 13px; margin-top: 8px; color: #666; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; } */
+    
     .nutrition { 
-    font-size: 13px; 
-    margin-top: 8px; 
-    color: #666; 
-    display: flex; 
-    flex-direction: column; /* 改為垂直堆疊 */
-    gap: 5px;              /* 設定兩行之間的距離 */
+        font-size: 13px; 
+        margin-top: 8px; 
+        color: #666; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 5px;              
     }
     .nutrition-row {
-    display: flex;         /* 讓每一行內的項目水平排列 */
-    flex-wrap: wrap;       /* 確保如果字太多可以自動換行 */
-    gap: 10px;             /* 設定項目之間的間距 */
-    align-items: center;
+        display: flex;         
+        flex-wrap: wrap;       
+        gap: 10px;             
+        align-items: center;
     }
     
-    /* 💡 新增的價格標籤樣式 */
     .price-tag { color: #E53935; font-weight: bold; font-size: 14px; }
     .pro-tag { color: var(--primary-orange, #FF8C42); font-weight: bold; }
+
+    /* 💡 新增：控制火焰圖片的大小與對齊 */
+    .fire-icon {
+        width: 14px; /* 設定合適的寬度 */
+        height: 14px; /* 設定合適的高度 */
+        object-fit: contain;
+        vertical-align: middle; /* 讓圖片與文字垂直置中對齊 */
+        margin-right: 2px; /* 圖片與後面文字稍微保持一點距離 */
+        margin-bottom: 2px; /* 微調讓它看起來更置中 */
+    }
     
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
     .add-btn:active { transform: scale(0.95); }
@@ -129,11 +138,12 @@ $result = $conn->query($sql);
                     <div class="nutrition">
                         <div class="nutrition-row">
                             <span class="price-tag">$<?php echo floatval($row['price']); ?></span>
-                            <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
+                            <!-- 💡 替換：將 🔥 換成 img 標籤 -->
+                            <span><img src="icon/fire_icon.png" alt="熱量" class="fire-icon"> <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
                         </div>
     
                         <div class="nutrition-row">
-                            <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
+                            <span class="pro-tag">蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
                             <span class="pro-tag">脂肪 <?php echo isset($row['fat']) ? $row['fat'] : '0'; ?>g</span>
                             <span class="pro-tag">碳水 <?php echo isset($row['carbs']) ? $row['carbs'] : '0'; ?>g</span>
                         </div>
