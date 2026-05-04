@@ -24,7 +24,7 @@ if ($res_result && $res_result->num_rows > 0) {
     $res_loc = $res_data['location'];
 }
 
-$sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein, i.is_vegetarian
+$sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein,i.fat, i.carbs, i.is_vegetarian
         FROM items i
         JOIN categories c ON i.c_id = c.c_id
         WHERE c.r_id = $r_id";
@@ -116,8 +116,8 @@ $result = $conn->query($sql);
                         <span class="price-tag">$<?php echo floatval($row['price']); ?></span>
                         <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
                         <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
-                        <span class="fat-tag">脂肪 <?php echo isset($row['fat']) ? $row['fat'] : '0'; ?>g</span>
-                        <span class="carb-tag">碳水 <?php echo isset($row['carbs']) ? $row['carbs'] : '0'; ?>g</span>
+                        <span class="pro-tag">脂肪 <?php echo isset($row['fat']) ? $row['fat'] : '0'; ?>g</span>
+                        <span class="pro-tag">碳水 <?php echo isset($row['carbs']) ? $row['carbs'] : '0'; ?>g</span>
                     </div>
                 </div>
                 
