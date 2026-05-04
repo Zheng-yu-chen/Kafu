@@ -39,7 +39,21 @@ $result = $conn->query($sql);
     .menu-container { padding: 20px; }
     .item-card { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .item-info h4 { margin: 0; font-size: 16px; color: var(--fujen-blue, #002B5B); }
-    .nutrition { font-size: 13px; margin-top: 8px; color: #666; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    /* .nutrition { font-size: 13px; margin-top: 8px; color: #666; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; } */
+    .nutrition { 
+    font-size: 13px; 
+    margin-top: 8px; 
+    color: #666; 
+    display: flex; 
+    flex-direction: column; /* 改為垂直堆疊 */
+    gap: 5px;              /* 設定兩行之間的距離 */
+    }
+    .nutrition-row {
+    display: flex;         /* 讓每一行內的項目水平排列 */
+    flex-wrap: wrap;       /* 確保如果字太多可以自動換行 */
+    gap: 10px;             /* 設定項目之間的間距 */
+    align-items: center;
+    }
     
     /* 💡 新增的價格標籤樣式 */
     .price-tag { color: #E53935; font-weight: bold; font-size: 14px; }
@@ -113,11 +127,16 @@ $result = $conn->query($sql);
                 <div class="item-info">
                     <h4><?php echo htmlspecialchars($row['name']); ?></h4>
                     <div class="nutrition">
-                        <span class="price-tag">$<?php echo floatval($row['price']); ?></span>
-                        <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
-                        <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
-                        <span class="pro-tag">脂肪 <?php echo isset($row['fat']) ? $row['fat'] : '0'; ?>g</span>
-                        <span class="pro-tag">碳水 <?php echo isset($row['carbs']) ? $row['carbs'] : '0'; ?>g</span>
+                        <div class="nutrition-row">
+                            <span class="price-tag">$<?php echo floatval($row['price']); ?></span>
+                            <span>🔥 <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
+                        </div>
+    
+                        <div class="nutrition-row">
+                            <span class="pro-tag">💪 蛋白質 <?php echo isset($row['protein']) ? $row['protein'] : '0'; ?>g</span>
+                            <span class="pro-tag">脂肪 <?php echo isset($row['fat']) ? $row['fat'] : '0'; ?>g</span>
+                            <span class="pro-tag">碳水 <?php echo isset($row['carbs']) ? $row['carbs'] : '0'; ?>g</span>
+                        </div>
                     </div>
                 </div>
                 
