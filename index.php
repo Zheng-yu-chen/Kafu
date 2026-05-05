@@ -5,19 +5,20 @@ include('header.php');
 
 // 1. 取得一般篩選與搜尋參數
 $filter = isset($_GET['filter']) ? $_GET['filter'] : '全部';
-$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+$search = isset($_GET['search']) ? trim(mysqli_real_escape_string($conn, $_GET['search'])) : '';
 
 // 2. 取得進階篩選參數
-$price_max = isset($_GET['price_max']) ? intval($_GET['price_max']) : 300; // 預設最大價格
+$price_max = isset($_GET['price_max']) ? intval($_GET['price_max']) : 300; // 預設最大價格為 300
 $is_veg = isset($_GET['is_veg']) ? 1 : 0;
 $low_cal = isset($_GET['low_cal']) ? 1 : 0;
 $high_pro = isset($_GET['high_pro']) ? 1 : 0;
 
-// 3. 判斷是否為「進階搜尋模式」 (只要有動到搜尋框、價格、標籤的任何一個，就切換為餐點模式)
-$is_advanced_search = (!empty($search) || isset($_GET['price_max']) || $is_veg || $low_cal || $high_pro);
+// 3. 💡 修正判斷邏輯：
+// 只有當「有輸入文字」或「價格被拉低於預設的300」或「有勾選任何營養標籤」時，才切換為餐點搜尋模式
+$is_advanced_search = (!empty($search) || $price_max < 300 || $is_veg || $low_cal || $high_pro);
 
 if ($is_advanced_search) {
-    // 💡 模式 A：進階搜尋，顯示符合條件的「餐點」 (補上 fat, carbs 的查詢)
+    // 模式 A：進階搜尋，顯示符合條件的「餐點」
     $sql = "SELECT i.item_id, i.name AS item_name, i.price, i.calories, i.protein, i.fat, i.carbs, i.is_vegetarian, 
                    r.name AS res_name, r.r_id, r.location, r.image_url 
             FROM items i
@@ -47,7 +48,7 @@ if ($is_advanced_search) {
     $sql .= " ORDER BY i.price ASC"; // 價格由低到高排序
     
 } else {
-    // 💡 模式 B：預設模式，顯示整間「餐廳」
+    // 模式 B：預設模式，顯示整間「餐廳」
     $sql = "SELECT DISTINCT r.* FROM restaurants r
             LEFT JOIN categories c ON r.r_id = c.r_id
             LEFT JOIN items i ON c.c_id = i.c_id
@@ -71,8 +72,26 @@ $result = $conn->query($sql);
     
     /* 搜尋與進階篩選區塊 */
     .search-wrapper { max-width: 320px; margin: 0 auto; position: relative; }
-    .search-input-group { display: flex; gap: 8px; }
-    .search-input { flex: 1; padding: 10px 15px; border-radius: 20px; border: none; outline: none; background: rgba(255, 255, 255, 0.95); text-align: center; font-size: 14px;}
+    .search-input-group { display: flex; gap: 8px; align-items: stretch; }
+    
+    .search-input-wrapper { flex: 1; position: relative; display: flex; }
+    
+    .search-input { 
+        width: 100%; padding: 10px 40px 10px 15px; 
+        border-radius: 20px; border: none; outline: none; 
+        background: rgba(255, 255, 255, 0.95); text-align: left; font-size: 14px; box-sizing: border-box;
+    }
+    
+    .search-icon-btn {
+        position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+        background: none; border: none; cursor: pointer; padding: 5px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .search-icon-btn img {
+        width: 18px; height: 18px; object-fit: contain; opacity: 0.6; transition: 0.2s;
+    }
+    .search-icon-btn:active img { opacity: 1; transform: scale(0.9); }
+
     .adv-search-btn { background: var(--primary-orange, #FF8C42); color: white; border: none; border-radius: 20px; padding: 0 15px; cursor: pointer; font-weight: bold; font-size: 13px;}
     
     /* 展開的進階面板 */
@@ -118,7 +137,7 @@ $result = $conn->query($sql);
     /* 小火焰圖片 CSS */
     .fire-icon { width: 12px; height: 12px; object-fit: contain; vertical-align: middle; margin-right: 2px; margin-bottom: 2px;}
     
-    /* 💡 統一換成橘色粗體字 */
+    /* 統一換成橘色粗體字 */
     .item-macros { display: flex; gap: 6px; font-size: 12px; font-weight: bold; color: var(--primary-orange, #FF8C42); border-left: 1px solid #ddd; padding-left: 8px; }
 
     .btn-go-text { color: #ccc; font-size: 12px; white-space: nowrap; margin-left: 10px; }
@@ -167,7 +186,13 @@ $result = $conn->query($sql);
             <input type="hidden" name="filter" value="<?php echo htmlspecialchars($filter); ?>">
             
             <div class="search-input-group">
-                <input type="text" name="search" class="search-input" placeholder="今天想吃什麼？" value="<?php echo htmlspecialchars($search); ?>">
+                <div class="search-input-wrapper">
+                    <input type="text" name="search" class="search-input" placeholder="今天想吃什麼？" value="<?php echo htmlspecialchars($search); ?>">
+                    <button type="submit" class="search-icon-btn" title="搜尋">
+                        <img src="icon/search_icon.png" alt="搜尋">
+                    </button>
+                </div>
+                
                 <button type="button" class="adv-search-btn" onclick="toggleAdvPanel()">進階篩選</button>
             </div>
 
@@ -230,7 +255,6 @@ $result = $conn->query($sql);
                                     </span>
                                 <?php endif; ?>
                                 
-                                <!-- 💡 這裡將三大營養素文字都改為橘色，並移除前面的 Emoji 以求簡潔 -->
                                 <div class="item-macros">
                                     <?php if($row['protein'] !== null) echo "<span>蛋白質 " . floatval($row['protein']) . "g</span>"; ?>
                                     <?php if($row['fat'] !== null) echo "<span>脂肪 " . floatval($row['fat']) . "g</span>"; ?>
@@ -308,7 +332,10 @@ document.addEventListener("DOMContentLoaded", function() {
     document.body.appendChild(document.getElementById('ai-wrapper'));
     
     const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.has('price_max') || urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg')) {
+    
+    // 💡 修正自動展開面板的邏輯：
+    // 如果 URL 裡有勾選任何營養標籤，或是價格被拉動（不是預設的 300），面板才保持打開
+    if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg') || (urlParams.has('price_max') && urlParams.get('price_max') !== '300')) {
         document.getElementById('advPanel').classList.add('active');
     }
 });

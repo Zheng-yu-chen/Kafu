@@ -5,35 +5,34 @@ include('header.php');
 
 $error_msg = '';
 
-// 當表單送出時執行登入驗證
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $name = $_POST['name'];
     $acc = $_POST['accounts'];
     $pwd = $_POST['password'];
+    $role_id = 3; // 預設為一般學生
+    $goal_cal = 2000; // 預設目標熱量
 
-    $sql = "SELECT * FROM accounts WHERE accounts = ? AND password = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $acc, $pwd);
+    // 檢查學號(帳號)是否已被註冊過
+    $check_sql = "SELECT * FROM accounts WHERE accounts = ?";
+    $stmt = $conn->prepare($check_sql);
+    $stmt->bind_param("s", $acc);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        
-        // 將資料存入 Session
-        $_SESSION['u_id'] = $user['u_id'];
-        $_SESSION['name'] = $user['name'];
-        $_SESSION['role_id'] = $user['role_id'];
-
-        if ($user['role_id'] == 3) {
-            echo "<script>window.location.href = 'profile.php';</script>";
-        } else if ($user['role_id'] == 2) {
-            echo "<script>window.location.href = 'store_profile.php';</script>";
-        } else if ($user['role_id'] == 1) {
-            echo "<script>window.location.href = 'admin_dashboard.php';</script>";
-        }
-        exit();
+        $error_msg = '此學號已經註冊過囉！請直接登入。';
     } else {
-        $error_msg = '帳號或密碼錯誤，請重新輸入！';
+        // 將新資料寫入資料庫
+        $insert_sql = "INSERT INTO accounts (name, accounts, password, role_id, goal_cal) VALUES (?, ?, ?, ?, ?)";
+        $insert_stmt = $conn->prepare($insert_sql);
+        $insert_stmt->bind_param("sssii", $name, $acc, $pwd, $role_id, $goal_cal);
+        
+        if ($insert_stmt->execute()) {
+            echo "<script>alert('註冊成功！請使用新帳號登入。'); window.location.href='login.php';</script>";
+            exit();
+        } else {
+            $error_msg = '註冊失敗，請稍後再試。';
+        }
     }
 }
 ?>
@@ -47,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         -ms-overflow-style: none; scrollbar-width: none;
     }
     .login-page::-webkit-scrollbar { display: none; }
-
+    
     .back-btn-login {
         position: absolute; top: 25px; left: 20px; color: white;
         text-decoration: none; font-size: 14px; font-weight: bold; opacity: 0.9; transition: 0.2s; z-index: 1000;
@@ -75,40 +74,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     .input-group input:focus { outline: none; border-color: var(--fujen-blue, #002B5B); background: white; }
     
     .submit-btn { 
-        width: 100%; background: var(--primary-orange, #FF8C42); color: white; 
+        width: 100%; background: var(--fujen-blue, #002B5B); color: white; 
         border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; 
-        cursor: pointer; transition: 0.2s; margin-top: 10px; box-shadow: 0 4px 10px rgba(255,140,66,0.3);
+        cursor: pointer; transition: 0.2s; margin-top: 10px; box-shadow: 0 4px 10px rgba(0,43,91,0.2);
     }
     .submit-btn:active { transform: scale(0.97); }
-
-    /* 💡 新增：註冊按鈕的樣式 */
-    .register-btn {
-        display: block; width: 100%; text-align: center;
-        background: white; color: var(--primary-orange, #FF8C42); 
-        border: 2px solid var(--primary-orange, #FF8C42); 
-        padding: 13px; border-radius: 8px; font-size: 16px; font-weight: bold; 
-        cursor: pointer; transition: 0.2s; margin-top: 15px; text-decoration: none; box-sizing: border-box;
-    }
-    .register-btn:active { background: #FFF3EB; transform: scale(0.97); }
     
     .error-msg { color: #ff4d4d; font-size: 13px; text-align: center; margin-bottom: 15px; font-weight: bold; background: #ffe6e6; padding: 10px; border-radius: 8px;}
     
+    .google-btn {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        background: white; color: #555; border: 1px solid #ddd; padding: 12px;
+        border-radius: 8px; font-size: 14px; font-weight: bold; text-decoration: none;
+        transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-top: 20px;
+    }
+    .google-btn:active { background: #f9f9f9; transform: scale(0.98); }
+    .google-btn img { width: 18px; height: 18px; }
+
     .footer-text { margin-top: 40px; font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; line-height: 1.6; }
 </style>
 
 <div class="login-page">
     
-    <a href="profile.php" class="back-btn-login">❮ 返回</a>
+    <a href="login.php" class="back-btn-login">❮ 返回登入</a>
     
     <div class="logo-section">
         <div class="logo-box">
             <img src="logo.png" alt="KaFu Logo">
-            <p>輔大學餐熱量計算機</p>
+            <p>建立您的個人帳號</p>
         </div>
     </div>
 
     <div class="form-container">
-        <h2 class="form-title">登入</h2>
+        <h2 class="form-title">註冊</h2>
         
         <?php if($error_msg): ?>
             <div class="error-msg"><?php echo $error_msg; ?></div>
@@ -116,20 +114,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <form method="POST" action="">
             <div class="input-group">
-                <label>帳號 / 學號</label>
-                <input type="text" name="accounts" placeholder="請輸入帳號" required autocomplete="off">
+                <label>姓名 / 暱稱</label>
+                <input type="text" name="name" placeholder="請輸入姓名" required autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label>學號 (將作為登入帳號)</label>
+                <input type="text" name="accounts" placeholder="請輸入學號" required autocomplete="off">
             </div>
             
             <div class="input-group">
-                <label>密碼</label>
+                <label>設定密碼</label>
                 <input type="password" name="password" placeholder="請輸入密碼" required>
             </div>
             
-            <!-- 原本的登入按鈕 -->
-            <button type="submit" class="submit-btn">登入</button>
+            <button type="submit" class="submit-btn">完成註冊</button>
 
-            <!-- 💡 新增的註冊按鈕，點擊後會前往 register.php -->
-            <a href="register.php" class="register-btn">註冊新帳號</a>
+            <!-- 💡 若後續有建置好 google_login.php，就能透過這個按鈕執行 OAuth -->
+            <hr style="margin: 25px 0 20px; border: 0; border-top: 1px solid #eee;">
+            <a href="google_login.php" class="google-btn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+                使用 Google 註冊
+            </a>
         </form>
     </div>
 
