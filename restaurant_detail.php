@@ -24,10 +24,13 @@ if ($res_result && $res_result->num_rows > 0) {
     $res_loc = $res_data['location'];
 }
 
-$sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein,i.fat, i.carbs, i.is_vegetarian
+$sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein, i.fat, i.carbs, i.is_vegetarian
         FROM items i
         JOIN categories c ON i.c_id = c.c_id
-        WHERE c.r_id = $r_id";
+        WHERE c.r_id = $r_id 
+        AND i.item_status = 1 
+        ORDER BY i.c_id ASC, i.item_id ASC";
+
 $result = $conn->query($sql);
 ?>
 
