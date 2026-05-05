@@ -112,7 +112,7 @@ try {
                data-name="<?php echo htmlspecialchars($row['item_name'] . $row['res_name']); ?>"
                data-loc="<?php echo $row['location']; ?>">
                 
-                <div class="item-img">🍲</div>
+
                 
                 <div class="comment-info">
                     <h3><?php echo htmlspecialchars($row['item_name']); ?></h3>

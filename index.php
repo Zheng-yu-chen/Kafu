@@ -8,13 +8,12 @@ $filter = isset($_GET['filter']) ? $_GET['filter'] : '全部';
 $search = isset($_GET['search']) ? trim(mysqli_real_escape_string($conn, $_GET['search'])) : '';
 
 // 2. 取得進階篩選參數
-$price_max = isset($_GET['price_max']) ? intval($_GET['price_max']) : 300; // 預設最大價格為 300
+$price_max = isset($_GET['price_max']) ? intval($_GET['price_max']) : 300; 
 $is_veg = isset($_GET['is_veg']) ? 1 : 0;
 $low_cal = isset($_GET['low_cal']) ? 1 : 0;
 $high_pro = isset($_GET['high_pro']) ? 1 : 0;
 
-// 3. 💡 修正判斷邏輯：
-// 只有當「有輸入文字」或「價格被拉低於預設的300」或「有勾選任何營養標籤」時，才切換為餐點搜尋模式
+// 3. 判斷是否為「進階搜尋模式」
 $is_advanced_search = (!empty($search) || $price_max < 300 || $is_veg || $low_cal || $high_pro);
 
 if ($is_advanced_search) {
@@ -26,7 +25,7 @@ if ($is_advanced_search) {
             JOIN restaurants r ON c.r_id = r.r_id
             WHERE 1=1";
             
-    // 關鍵字搜尋 (同時找餐點名或餐廳名)
+    // 關鍵字搜尋 
     if (!empty($search)) {
         $sql .= " AND (i.name LIKE '%$search%' OR r.name LIKE '%$search%')";
     }
@@ -45,7 +44,7 @@ if ($is_advanced_search) {
         $sql .= " AND r.location = '$filter_safe'";
     }
     
-    $sql .= " ORDER BY i.price ASC"; // 價格由低到高排序
+    $sql .= " ORDER BY i.price ASC"; 
     
 } else {
     // 模式 B：預設模式，顯示整間「餐廳」
@@ -128,6 +127,17 @@ $result = $conn->query($sql);
     .item-card-info { flex: 1; display: flex; justify-content: space-between; align-items: center; width: 100%; }
     .item-text-content { flex: 1; }
     .item-name { font-size: 16px; font-weight: bold; color: var(--fujen-blue, #002B5B); margin: 0 0 4px; }
+    
+    .dest-icon {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        vertical-align: middle; /* 💡 改成 middle 讓它垂直置中對齊文字 */
+        margin-right: 4px;
+        margin-bottom: 3px; /* 💡 稍微加上一點底邊距，把圖示往上推 */
+        opacity: 0.9;
+    }
+
     .item-meta { font-size: 12px; color: #888; margin: 0 0 6px; }
     
     /* 排版更新：價格、熱量與三大營養素 */
@@ -245,7 +255,10 @@ $result = $conn->query($sql);
                     <div class="item-card-info" style="margin-right: 10px;">
                         <div class="item-text-content">
                             <h3 class="item-name"><?php echo htmlspecialchars($row['item_name']); ?></h3>
-                            <p class="item-meta"><?php echo htmlspecialchars($row['res_name']); ?> • 📍 <?php echo htmlspecialchars($row['location']); ?></p>
+                            <p class="item-meta">
+                                <?php echo htmlspecialchars($row['res_name']); ?> • 
+                                <img src="icon/destination_icon.png" alt="地點" class="dest-icon"> <?php echo htmlspecialchars($row['location']); ?>
+                            </p>
                             
                             <div class="item-nutrition-row">
                                 <span class="item-price">$<?php echo floatval($row['price']); ?></span>
@@ -275,7 +288,9 @@ $result = $conn->query($sql);
                     </div>
                     <div class="res-info">
                         <h3><?php echo htmlspecialchars($row['name']); ?></h3>
-                        <p style="font-size: 12px; color: #888;">📍 <?php echo htmlspecialchars($row['location']); ?></p>
+                        <p style="font-size: 12px; color: #888;">
+                            <img src="icon/destination_icon.png" alt="地點" class="dest-icon"> <?php echo htmlspecialchars($row['location']); ?>
+                        </p>
                     </div>
                     <div style="margin-left: auto; color: #ccc;">❯</div>
                 </a>
@@ -333,8 +348,6 @@ document.addEventListener("DOMContentLoaded", function() {
     
     const urlParams = new URLSearchParams(window.location.search);
     
-    // 💡 修正自動展開面板的邏輯：
-    // 如果 URL 裡有勾選任何營養標籤，或是價格被拉動（不是預設的 300），面板才保持打開
     if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg') || (urlParams.has('price_max') && urlParams.get('price_max') !== '300')) {
         document.getElementById('advPanel').classList.add('active');
     }

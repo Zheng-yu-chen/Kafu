@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['name'] = $user['name'];
         $_SESSION['role_id'] = $user['role_id'];
 
+        // 身分自動分流
         if ($user['role_id'] == 3) {
             echo "<script>window.location.href = 'profile.php';</script>";
         } else if ($user['role_id'] == 2) {
@@ -39,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 <style>
+    /* 基礎背景設定 */
     .login-page {
         position: absolute; top: 0; left: 0; right: 0; bottom: 0;
         background-color: var(--fujen-blue, #002B5B);
@@ -54,45 +56,76 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .back-btn-login:active { transform: scale(0.95); opacity: 1; }
 
+    /* Logo 區塊 */
     .logo-section { text-align: center; margin-bottom: 25px; }
-    .logo-box { background-color: transparent; border-radius: 0; padding: 10px; display: inline-block; box-shadow: none; }
+    .logo-box { background-color: transparent; border-radius: 0; padding: 10px; display: inline-block; }
     .logo-box img { max-width: 140px; height: auto; display: block; margin: 0 auto; }
     .logo-box p { color: white; font-size: 15px; margin-top: 12px; font-weight: bold; letter-spacing: 1px; }
     
+    /* 白色登入卡片 */
     .form-container {
-        background: white; width: 100%; max-width: 320px;
-        border-radius: 15px; padding: 35px 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        background: white; width: 100%; max-width: 340px;
+        border-radius: 20px; padding: 40px 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
     
-    .form-title { text-align: center; color: var(--fujen-blue, #002B5B); margin-top: 0; margin-bottom: 25px; font-size: 20px; letter-spacing: 1px;}
-    
-    .input-group { margin-bottom: 20px; }
-    .input-group label { display: block; font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold; }
-    .input-group input { 
-        width: 100%; padding: 14px; border: 1px solid #ddd; 
-        border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fafafa; transition: 0.2s;
+    /* 💡 膠囊狀輸入框設計 */
+    .input-pill {
+        display: flex; align-items: center; background: #f4f6f8;
+        border-radius: 30px; padding: 5px 20px; margin-bottom: 20px;
+        transition: 0.2s; border: 1px solid transparent;
     }
-    .input-group input:focus { outline: none; border-color: var(--fujen-blue, #002B5B); background: white; }
+    .input-pill:focus-within { background: white; border-color: var(--fujen-blue, #002B5B); box-shadow: 0 0 0 3px rgba(0,43,91,0.1); }
     
+    .input-pill svg { fill: #aaa; width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+    
+    .input-pill input { 
+        flex: 1; border: none; background: transparent; 
+        padding: 12px 0; font-size: 14px; outline: none; color: #333;
+    }
+    .input-pill input::placeholder { color: #aaa; }
+    
+    /* 💡 圓潤的登入按鈕 */
     .submit-btn { 
         width: 100%; background: var(--primary-orange, #FF8C42); color: white; 
-        border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; 
-        cursor: pointer; transition: 0.2s; margin-top: 10px; box-shadow: 0 4px 10px rgba(255,140,66,0.3);
+        border: none; padding: 14px; border-radius: 30px; font-size: 16px; font-weight: bold; 
+        cursor: pointer; transition: 0.2s; margin-top: 5px; letter-spacing: 2px;
+        box-shadow: 0 4px 10px rgba(255,140,66,0.3);
     }
     .submit-btn:active { transform: scale(0.97); }
 
-    /* 💡 新增：註冊按鈕的樣式 */
-    .register-btn {
-        display: block; width: 100%; text-align: center;
-        background: white; color: var(--primary-orange, #FF8C42); 
-        border: 2px solid var(--primary-orange, #FF8C42); 
-        padding: 13px; border-radius: 8px; font-size: 16px; font-weight: bold; 
-        cursor: pointer; transition: 0.2s; margin-top: 15px; text-decoration: none; box-sizing: border-box;
+    /* 💡 左右輔助連結 (註冊 / 忘記密碼) */
+    .helper-links {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 18px; padding: 0 5px;
     }
-    .register-btn:active { background: #FFF3EB; transform: scale(0.97); }
+    .helper-links a {
+        color: #666; font-size: 13px; text-decoration: none; transition: 0.2s;
+    }
+    .helper-links a:hover { color: var(--primary-orange, #FF8C42); }
     
-    .error-msg { color: #ff4d4d; font-size: 13px; text-align: center; margin-bottom: 15px; font-weight: bold; background: #ffe6e6; padding: 10px; border-radius: 8px;}
+    .error-msg { color: #ff4d4d; font-size: 13px; text-align: center; margin-bottom: 20px; font-weight: bold; background: #ffe6e6; padding: 10px; border-radius: 8px;}
     
+    /* 💡 其他登入方式分隔線 */
+    .divider {
+        display: flex; align-items: center; text-align: center;
+        color: #aaa; font-size: 12px; margin: 40px 0 25px;
+    }
+    .divider::before, .divider::after {
+        content: ''; flex: 1; border-bottom: 1px solid #eee;
+    }
+    .divider span { padding: 0 15px; }
+
+    /* 💡 圓形 Google 登入按鈕 */
+    .social-login { display: flex; justify-content: center; }
+    .google-circle {
+        width: 50px; height: 50px; border-radius: 50%; background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #f0f0f0;
+        display: flex; align-items: center; justify-content: center;
+        transition: 0.2s; text-decoration: none;
+    }
+    .google-circle:active { transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .google-circle img { width: 22px; height: 22px; }
+
     .footer-text { margin-top: 40px; font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; line-height: 1.6; }
 </style>
 
@@ -108,28 +141,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <div class="form-container">
-        <h2 class="form-title">登入</h2>
-        
         <?php if($error_msg): ?>
             <div class="error-msg"><?php echo $error_msg; ?></div>
         <?php endif; ?>
 
         <form method="POST" action="">
-            <div class="input-group">
-                <label>帳號 / 學號</label>
-                <input type="text" name="accounts" placeholder="請輸入帳號" required autocomplete="off">
+            
+            <!-- 帳號輸入框 -->
+            <div class="input-pill">
+                <!-- SVG User Icon -->
+                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <input type="text" name="accounts" placeholder="用戶名 / 學號" required autocomplete="off">
             </div>
             
-            <div class="input-group">
-                <label>密碼</label>
-                <input type="password" name="password" placeholder="請輸入密碼" required>
+            <!-- 密碼輸入框 -->
+            <div class="input-pill">
+                <!-- SVG Lock Icon -->
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <input type="password" name="password" placeholder="請輸入您的密碼" required>
             </div>
             
-            <!-- 原本的登入按鈕 -->
+            <!-- 登入按鈕 -->
             <button type="submit" class="submit-btn">登入</button>
+            
+            <!-- 註冊與忘記密碼 -->
+            <div class="helper-links">
+                <a href="register.php">註冊帳號</a>
+                <a href="#">忘記密碼？</a>
+            </div>
 
-            <!-- 💡 新增的註冊按鈕，點擊後會前往 register.php -->
-            <a href="register.php" class="register-btn">註冊新帳號</a>
+            <!-- 分隔線 -->
+            <div class="divider">
+                <span>其他登入方式</span>
+            </div>
+
+            <!-- 單一 Google 登入按鈕 -->
+            <div class="social-login">
+                <a href="google_login.php" class="google-circle" title="使用 Google 登入">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+                </a>
+            </div>
+            
         </form>
     </div>
 

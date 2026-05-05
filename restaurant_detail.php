@@ -58,14 +58,23 @@ $result = $conn->query($sql);
     .price-tag { color: #E53935; font-weight: bold; font-size: 14px; }
     .pro-tag { color: var(--primary-orange, #FF8C42); font-weight: bold; }
 
-    /* 💡 新增：控制火焰圖片的大小與對齊 */
     .fire-icon {
-        width: 14px; /* 設定合適的寬度 */
-        height: 14px; /* 設定合適的高度 */
+        width: 14px; 
+        height: 14px; 
         object-fit: contain;
-        vertical-align: middle; /* 讓圖片與文字垂直置中對齊 */
-        margin-right: 2px; /* 圖片與後面文字稍微保持一點距離 */
-        margin-bottom: 2px; /* 微調讓它看起來更置中 */
+        vertical-align: middle; 
+        margin-right: 2px; 
+        margin-bottom: 2px; 
+    }
+
+    .dest-icon {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        vertical-align: middle; /* 💡 改成 middle 讓它垂直置中對齊文字 */
+        margin-right: 4px;
+        margin-bottom: 3px; /* 💡 稍微加上一點底邊距，把圖示往上推 */
+        opacity: 0.9;
     }
     
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
@@ -125,7 +134,7 @@ $result = $conn->query($sql);
     <a href="index.php" class="back-btn">❮ 返回店家列表</a>
     <div class="header-title">
         <h1><?php echo htmlspecialchars($res_name); ?></h1>
-        <p>📍 <?php echo htmlspecialchars($res_loc); ?> • 餐點列表</p>
+        <p><img src="icon/destination_icon.png" alt="地點" class="dest-icon"><?php echo htmlspecialchars($res_loc); ?> • 餐點列表</p>
     </div>
 </div>
 
@@ -138,7 +147,6 @@ $result = $conn->query($sql);
                     <div class="nutrition">
                         <div class="nutrition-row">
                             <span class="price-tag">$<?php echo floatval($row['price']); ?></span>
-                            <!-- 💡 替換：將 🔥 換成 img 標籤 -->
                             <span><img src="icon/fire_icon.png" alt="熱量" class="fire-icon"> <?php echo ($row['calories'] !== null) ? $row['calories'] : '---'; ?> kcal</span>
                         </div>
     
@@ -230,7 +238,6 @@ $result = $conn->query($sql);
     function openTrayModal(itemId, itemName) {
         document.getElementById('modalItemId').value = itemId;
         document.getElementById('modalItemName').innerText = itemName;
-        // 開啟時將數量歸 1
         document.getElementById('modalQty').value = 1;
         document.getElementById('trayModal').style.display = 'flex';
     }
@@ -247,7 +254,6 @@ $result = $conn->query($sql);
         document.getElementById('trayModal').style.display = 'none';
     }
 
-    // 點擊背景關閉
     document.getElementById('trayModal').addEventListener('click', function(e) {
         if (e.target === this) closeTrayModal();
     });
