@@ -17,8 +17,8 @@ $high_pro = isset($_GET['high_pro']) ? 1 : 0;
 $is_advanced_search = (!empty($search) || isset($_GET['price_max']) || $is_veg || $low_cal || $high_pro);
 
 if ($is_advanced_search) {
-    // 💡 模式 A：進階搜尋，顯示符合條件的「餐點」
-    $sql = "SELECT i.item_id, i.name AS item_name, i.price, i.calories, i.protein, i.is_vegetarian, 
+    // 💡 模式 A：進階搜尋，顯示符合條件的「餐點」 (補上 fat, carbs 的查詢)
+    $sql = "SELECT i.item_id, i.name AS item_name, i.price, i.calories, i.protein, i.fat, i.carbs, i.is_vegetarian, 
                    r.name AS res_name, r.r_id, r.location, r.image_url 
             FROM items i
             JOIN categories c ON i.c_id = c.c_id
@@ -106,12 +106,24 @@ $result = $conn->query($sql);
     .res-actual-img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
     
     /* 餐點卡片專用文字設定 */
-    .item-card-info { flex: 1; }
+    .item-card-info { flex: 1; display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .item-text-content { flex: 1; }
     .item-name { font-size: 16px; font-weight: bold; color: var(--fujen-blue, #002B5B); margin: 0 0 4px; }
     .item-meta { font-size: 12px; color: #888; margin: 0 0 6px; }
+    
+    /* 排版更新：價格、熱量與三大營養素 */
+    .item-nutrition-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
     .item-price { font-weight: bold; color: #E53935; font-size: 14px; }
+    
+    /* 小火焰圖片 CSS */
+    .fire-icon { width: 12px; height: 12px; object-fit: contain; vertical-align: middle; margin-right: 2px; margin-bottom: 2px;}
+    
+    /* 💡 統一換成橘色粗體字 */
+    .item-macros { display: flex; gap: 6px; font-size: 12px; font-weight: bold; color: var(--primary-orange, #FF8C42); border-left: 1px solid #ddd; padding-left: 8px; }
 
-    /* --- 💡 小助理隱形外框與按鈕 --- */
+    .btn-go-text { color: #ccc; font-size: 12px; white-space: nowrap; margin-left: 10px; }
+
+    /* --- 小助理隱形外框與按鈕 --- */
     .ai-fixed-wrapper {
         position: fixed !important; 
         bottom: 0; left: 50%; transform: translateX(-50%); 
@@ -152,7 +164,6 @@ $result = $conn->query($sql);
     
     <div class="search-wrapper">
         <form action="index.php" method="GET" id="searchForm">
-            <!-- 隱藏保留地點參數 -->
             <input type="hidden" name="filter" value="<?php echo htmlspecialchars($filter); ?>">
             
             <div class="search-input-group">
@@ -160,7 +171,6 @@ $result = $conn->query($sql);
                 <button type="button" class="adv-search-btn" onclick="toggleAdvPanel()">進階篩選</button>
             </div>
 
-            <!-- 進階篩選面板 -->
             <div class="adv-panel" id="advPanel">
                 <div class="range-group">
                     <div class="range-header">
@@ -187,7 +197,6 @@ $result = $conn->query($sql);
                 
                 <button type="submit" class="submit-adv-btn">套用篩選</button>
                 <div style="text-align:center;">
-                    <!-- 點擊清除條件，只保留地點參數，洗掉其他所有東西 -->
                     <a href="index.php?filter=<?php echo urlencode($filter); ?>" style="font-size:12px; color:#999; text-decoration:none;">✕ 清除所有條件</a>
                 </div>
             </div>
@@ -205,24 +214,32 @@ $result = $conn->query($sql);
     <?php if ($result->num_rows > 0): ?>
         
         <?php if ($is_advanced_search): ?>
-            <!-- =============================== -->
-            <!-- 💡 模式 A：顯示【餐點】列表        -->
-            <!-- =============================== -->
             <h4 style="margin-top:0; margin-bottom:15px; color:#666;">為您找到的餐點：</h4>
             <?php while($row = $result->fetch_assoc()): ?>
                 <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="res-card">
-                    <!-- 💡 已移除左側的 res-img 區塊，讓排版更乾淨 -->
                     <div class="item-card-info" style="margin-right: 10px;">
-                        <h3 class="item-name"><?php echo htmlspecialchars($row['item_name']); ?></h3>
-                        <p class="item-meta"><?php echo htmlspecialchars($row['res_name']); ?> • 📍 <?php echo htmlspecialchars($row['location']); ?></p>
-                        <div class="item-price">$<?php echo floatval($row['price']); ?> 
-                            <span style="font-size:12px; color:#888; font-weight:normal; margin-left:8px;">
-                                <?php if($row['calories']) echo "🔥 ".$row['calories']." kcal"; ?>
-                                <?php if($row['protein']) echo " | 💪 ".$row['protein']." g"; ?>
-                            </span>
+                        <div class="item-text-content">
+                            <h3 class="item-name"><?php echo htmlspecialchars($row['item_name']); ?></h3>
+                            <p class="item-meta"><?php echo htmlspecialchars($row['res_name']); ?> • 📍 <?php echo htmlspecialchars($row['location']); ?></p>
+                            
+                            <div class="item-nutrition-row">
+                                <span class="item-price">$<?php echo floatval($row['price']); ?></span>
+                                <?php if($row['calories']): ?>
+                                    <span style="font-size: 12px; color: #888;">
+                                        <img src="icon/fire_icon.png" class="fire-icon" alt="熱量"> <?php echo $row['calories']; ?> kcal
+                                    </span>
+                                <?php endif; ?>
+                                
+                                <!-- 💡 這裡將三大營養素文字都改為橘色，並移除前面的 Emoji 以求簡潔 -->
+                                <div class="item-macros">
+                                    <?php if($row['protein'] !== null) echo "<span>蛋白質 " . floatval($row['protein']) . "g</span>"; ?>
+                                    <?php if($row['fat'] !== null) echo "<span>脂肪 " . floatval($row['fat']) . "g</span>"; ?>
+                                    <?php if($row['carbs'] !== null) echo "<span>碳水 " . floatval($row['carbs']) . "g</span>"; ?>
+                                </div>
+                            </div>
                         </div>
+                        <div class="btn-go-text">前往店家 ❯</div>
                     </div>
-                    <div style="color: #ccc; font-size:12px; white-space:nowrap;">前往店家 ❯</div>
                 </a>
             <?php endwhile; ?>
             
@@ -282,24 +299,20 @@ $result = $conn->query($sql);
 </div>
 
 <script>
-// 控制進階篩選面板開關
 function toggleAdvPanel() {
     const panel = document.getElementById('advPanel');
     panel.classList.toggle('active');
 }
 
-// 確保小助理脫離版面限制
 document.addEventListener("DOMContentLoaded", function() {
     document.body.appendChild(document.getElementById('ai-wrapper'));
     
-    // 如果網址列有進階搜尋參數，預設把進階面板打開
     const urlParams = new URLSearchParams(window.location.search);
     if(urlParams.has('price_max') || urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg')) {
         document.getElementById('advPanel').classList.add('active');
     }
 });
 
-// 小助理的功能
 function toggleAssistant() {
     const card = document.getElementById('assistant-card');
     card.style.display = (card.style.display === 'block') ? 'none' : 'block';
@@ -328,7 +341,7 @@ function fetchRecommend(mode) {
             resDiv.innerHTML = `
                 <small style="color: #FF8C42;">💡 推薦試試：</small>
                 <span class="result-name">${data.name}</span>
-                <p style="font-size: 12px; margin: 5px 0; color:#555;">於 ${data.restaurant} <br>🔥 ${data.calories} kcal | 💪 ${data.protein} g</p>
+                <p style="font-size: 12px; margin: 5px 0; color:#555;">於 ${data.restaurant} <br><img src="icon/fire_icon.png" style="width:10px; vertical-align:middle; margin-right:2px;"> ${data.calories} kcal | 蛋白質 ${data.protein} g</p>
                 <a href="restaurant_detail.php?r_id=${data.r_id}" class="btn-go">前往餐廳看看 ❯</a>
             `;
         } else {
