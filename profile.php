@@ -33,11 +33,11 @@ if ($is_logged_in) {
     // B. 💡 抓取今日進度：修改 SQL，一併加總 price, fat, carbs
     $today = date('Y-m-d');
     $sql_stats = "SELECT 
-                    SUM(IFNULL(i.calories, l.total_calories)) as total_cal, 
-                    SUM(IFNULL(i.protein, l.total_protein)) as total_pro,
-                    SUM(IFNULL(i.price, 0)) as total_price,
-                    SUM(IFNULL(i.fat, 0)) as total_fat,
-                    SUM(IFNULL(i.carbs, 0)) as total_carbs
+                   SUM(COALESCE(i.calories, l.total_calories)) as total_cal, 
+                    SUM(COALESCE(i.protein, l.total_protein)) as total_pro,
+                    SUM(COALESCE(l.price, i.price, 0)) as total_price, -- 👈 優先抓自訂價格，再抓學餐價格
+                    SUM(COALESCE(l.total_fat, i.fat, 0)) as total_fat, -- 👈 優先抓自訂脂肪
+                    SUM(COALESCE(l.total_carbs, i.carbs, 0)) as total_carbs --
                   FROM consumptionlogs l 
                   LEFT JOIN items i ON l.item_id = i.item_id 
                   WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";

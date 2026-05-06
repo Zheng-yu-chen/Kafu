@@ -18,12 +18,14 @@ if ($user_res && $row = $user_res->fetch_assoc()) {
 }
 
 // 確保抓取 items 表中的 price, fat, carbs 以計算總和與單項顯示
-$sql = "SELECT l.*, i.name as item_name, i.price, i.fat, i.carbs 
+$sql = "SELECT l.*, i.name as item_name, 
+        COALESCE(l.price, i.price) as final_price, 
+        COALESCE(l.total_fat, i.fat) as final_fat,   -- 👈 使用剛新增的 total_fat
+        COALESCE(l.total_carbs, i.carbs) as final_carbs -- 👈 使用剛新增的 total_carbs
         FROM consumptionlogs l 
         LEFT JOIN items i ON l.item_id = i.item_id 
         WHERE l.u_id = ? 
         ORDER BY l.recorded_at DESC";
-
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $u_id);
 $stmt->execute();
@@ -118,9 +120,9 @@ while ($row = $result->fetch_assoc()) {
         foreach ($items as $log) {
             $day_cal += $log['total_calories'];
             $day_pro += $log['total_protein'];
-            $day_price += $log['price'] ?? 0;
-            $day_fat += $log['fat'] ?? 0;
-            $day_carbs += $log['carbs'] ?? 0;
+            $day_price += $log['final_price']; // 改用 final_price
+            $day_fat += $log['final_fat'] ?? 0;
+            $day_carbs += $log['final_carbs'] ?? 0;
         }
         $percent = ($goal_cal > 0) ? min(100, round(($day_cal / $goal_cal) * 100)) : 0;
     ?>
@@ -167,13 +169,13 @@ while ($row = $result->fetch_assoc()) {
                 <!-- 單項餐點的營養素並排 -->
                 <div class="item-macros">
                     <span style="color:#4CAF50;">蛋白質 <?php echo number_format($log['total_protein'], 1); ?>g</span>
-                    <span style="color:#4CAF50;">脂肪 <?php echo number_format($log['fat'] ?? 0, 1); ?>g</span>
-                    <span style="color:#4CAF50;">碳水 <?php echo number_format($log['carbs'] ?? 0, 1); ?>g</span>
+                    <span style="color:#4CAF50;">脂肪 <?php echo number_format($log['final_fat'] ?? 0, 1); ?>g</span>
+                    <span style="color:#4CAF50;">碳水 <?php echo number_format($log['final_carbs'] ?? 0, 1); ?>g</span>
                 </div>
                 
                 <!-- 單項餐點的價格與熱量並排 -->
                 <div class="item-stats">
-                    <span class="item-price">$<?php echo floatval($log['price'] ?? 0); ?></span>
+                    <span class="item-price">$<?php echo floatval($log['final_price']); ?></span></span>
                     <span class="item-calories">🔥 <?php echo (int)$log['total_calories']; ?> <small style="font-size: 12px;">kcal</small></span>
                 </div>
             </div>
@@ -189,7 +191,8 @@ while ($row = $result->fetch_assoc()) {
                     <?php echo $log['total_calories']; ?>,
                     <?php echo $log['total_protein']; ?>,
                     <?php echo $log['fat'] ?? 0; ?>,
-                    <?php echo $log['carbs'] ?? 0; ?>
+                    <?php echo $log['carbs'] ?? 0; ?>,
+                    <?php echo $log['final_price']; ?>
                 )">編輯</button>
                 <button class="btn-delete" onclick="deleteLog(<?php echo $log['log_id']; ?>)">刪除</button>
             </div>
@@ -219,6 +222,7 @@ while ($row = $result->fetch_assoc()) {
                     <div><label>蛋白質 (g)</label><input type="number" step="0.1" name="protein" class="form-input" required></div>
                     <div><label>脂肪 (g)</label><input type="number" step="0.1" name="fat" class="form-input" value="0"></div>
                     <div><label>碳水 (g)</label><input type="number" step="0.1" name="carbs" class="form-input" value="0"></div>
+                    <div style="grid-column: span 2;"><label>價錢 ($)</label><input type="number" name="price" id="edit_price" class="form-input" placeholder="請輸入金額"></div>
                 </div>
                 
                 <div class="form-group">
@@ -257,6 +261,7 @@ while ($row = $result->fetch_assoc()) {
                     <div><label>蛋白質 (g)</label><input type="number" step="0.1" name="protein" id="edit_protein" class="form-input" required></div>
                     <div><label>脂肪 (g)</label><input type="number" step="0.1" name="fat" id="edit_fat" class="form-input"></div>
                     <div><label>碳水 (g)</label><input type="number" step="0.1" name="carbs" id="edit_carbs" class="form-input"></div>
+                    <div style="grid-column: span 2;"><label>價錢 ($)</label><input type="number" name="price" id="edit_price" class="form-input" placeholder="請輸入金額"></div>
                 </div>
                 
                 <div class="form-group">
@@ -287,7 +292,7 @@ while ($row = $result->fetch_assoc()) {
     function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
     
     // 💡 接收脂肪和碳水參數，並填入輸入框
-    function openEditModal(logId, name, date, meal, cal, pro, fat, carbs) {
+    function openEditModal(logId, name, date, meal, cal, pro, fat, carbs,price) {
         document.getElementById('edit_log_id').value = logId;
         document.getElementById('edit_food_name').value = name;
         document.getElementById('edit_eat_date').value = date;
@@ -295,7 +300,11 @@ while ($row = $result->fetch_assoc()) {
         document.getElementById('edit_protein').value = pro;
         document.getElementById('edit_fat').value = fat;
         document.getElementById('edit_carbs').value = carbs;
-        
+
+        // 💡 確保這裡能正確填入價格
+    if (document.getElementById('edit_price')) {
+        document.getElementById('edit_price').value = price;
+    }
         if (document.getElementById('edit_meal_' + meal)) {
             document.getElementById('edit_meal_' + meal).checked = true;
         }

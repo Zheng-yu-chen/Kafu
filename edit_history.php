@@ -10,6 +10,7 @@ if (isset($_SESSION['u_id']) && isset($_POST['log_id'])) {
     $new_name = $_POST['food_name'];
     $new_cal = intval($_POST['calories']);
     $new_pro = floatval($_POST['protein']);
+    $new_price = floatval($_POST['price']);
     $new_date = $_POST['eat_date']; 
     $new_meal = intval($_POST['daily_meal']);
     
@@ -19,13 +20,13 @@ if (isset($_SESSION['u_id']) && isset($_POST['log_id'])) {
                 total_calories = ?,
                 total_protein = ?,
                 daily_meal = ?, 
-                recorded_at = CONCAT(?, ' ', TIME(recorded_at)) 
+                price = ?,
+                recorded_at = STR_TO_DATE(CONCAT(?, ' ', TIME(recorded_at)), '%Y-%m-%d %H:%i:%s')
             WHERE log_id = ? AND u_id = ?";
             
     $stmt = $conn->prepare($sql);
     // 綁定參數：s (name), i (cal), d (pro), i (meal), s (date), i (log_id), i (u_id)
-    $stmt->bind_param("sidissi", $new_name, $new_cal, $new_pro, $new_meal, $new_date, $log_id, $u_id);
-    
+    $stmt->bind_param("sididisi", $new_name, $new_cal, $new_pro, $new_meal, $new_price, $new_date, $log_id, $u_id);
     if($stmt->execute()) {
         header("Location: history.php?status=updated");
     } else {
