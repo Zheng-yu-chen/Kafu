@@ -15,6 +15,8 @@ $client->setRedirectUri($redirectUri);
 $client->addScope("email");
 $client->addScope("profile");
 
+$client->setPrompt('select_account');
+
 // ==========================================================
 // 🌟 專業版：漂亮的過場動畫跳轉畫面
 // ==========================================================
