@@ -133,7 +133,7 @@ if ($is_logged_in) {
     <div class="avatar-circle"><?php echo $is_logged_in ? "👤" : "👣"; ?></div>
     <div class="user-info">
         <h2><?php echo htmlspecialchars($user_name); ?></h2>
-        <p><?php echo $is_logged_in ? "學號：" . htmlspecialchars($user_account) : "登入後開啟健康追蹤功能"; ?></p>
+        <p><?php echo $is_logged_in ? "帳號：" . htmlspecialchars($user_account) : "登入後開啟健康追蹤功能"; ?></p>
     </div>
     <?php if (!$is_logged_in): ?>
         <a href="login.php" class="btn-login-top">登入</a>

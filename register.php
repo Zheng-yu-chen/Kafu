@@ -12,7 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $role_id = 3; // 預設為一般學生
     $goal_cal = 2000; // 預設目標熱量
 
-    // 檢查學號(帳號)是否已被註冊過
     $check_sql = "SELECT * FROM accounts WHERE accounts = ?";
     $stmt = $conn->prepare($check_sql);
     $stmt->bind_param("s", $acc);
@@ -20,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-        $error_msg = '此學號已經註冊過囉！請直接登入。';
+        $error_msg = '此帳號已經註冊過！請直接登入。';
     } else {
         // 將新資料寫入資料庫
         $insert_sql = "INSERT INTO accounts (name, accounts, password, role_id, goal_cal) VALUES (?, ?, ?, ?, ?)";
@@ -53,7 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .back-btn-login:active { transform: scale(0.95); opacity: 1; }
 
-    .logo-section { text-align: center; margin-bottom: 25px; }
+    .logo-section { 
+    text-align: center; 
+    margin-top: 30px;
+    }
     .logo-box { background-color: transparent; border-radius: 0; padding: 10px; display: inline-block; box-shadow: none; }
     .logo-box img { max-width: 140px; height: auto; display: block; margin: 0 auto; }
     .logo-box p { color: white; font-size: 15px; margin-top: 12px; font-weight: bold; letter-spacing: 1px; }
@@ -119,8 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="input-group">
-                <label>學號 (將作為登入帳號)</label>
-                <input type="text" name="accounts" placeholder="請輸入學號" required autocomplete="off">
+                <label>帳號</label>
+                <input type="text" name="accounts" placeholder="請輸入帳號" required autocomplete="off">
             </div>
             
             <div class="input-group">
@@ -130,12 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <button type="submit" class="submit-btn">完成註冊</button>
 
-            <!-- 💡 若後續有建置好 google_login.php，就能透過這個按鈕執行 OAuth -->
-            <hr style="margin: 25px 0 20px; border: 0; border-top: 1px solid #eee;">
-            <a href="google_login.php" class="google-btn">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
-                使用 Google 註冊
-            </a>
         </form>
     </div>
 
@@ -144,5 +140,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         Information Management Sophomore Project
     </div>
 </div>
-
-<?php include('footer.php'); ?>

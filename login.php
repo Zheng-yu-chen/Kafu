@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         border-radius: 20px; padding: 40px 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
     
-    /* 💡 膠囊狀輸入框設計 */
+    /* 膠囊狀輸入框設計 */
     .input-pill {
         display: flex; align-items: center; background: #f4f6f8;
         border-radius: 30px; padding: 5px 20px; margin-bottom: 20px;
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .input-pill input::placeholder { color: #aaa; }
     
-    /* 💡 圓潤的登入按鈕 */
+    /* 圓潤的登入按鈕 */
     .submit-btn { 
         width: 100%; background: var(--primary-orange, #FF8C42); color: white; 
         border: none; padding: 14px; border-radius: 30px; font-size: 16px; font-weight: bold; 
@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .submit-btn:active { transform: scale(0.97); }
 
-    /* 💡 左右輔助連結 (註冊 / 忘記密碼) */
+    /* 左右輔助連結 (註冊 / 忘記密碼) */
     .helper-links {
         display: flex; justify-content: space-between; align-items: center;
         margin-top: 18px; padding: 0 5px;
@@ -105,26 +105,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     .error-msg { color: #ff4d4d; font-size: 13px; text-align: center; margin-bottom: 20px; font-weight: bold; background: #ffe6e6; padding: 10px; border-radius: 8px;}
     
-    /* 💡 其他登入方式分隔線 */
+    /* 其他登入方式分隔線 */
     .divider {
         display: flex; align-items: center; text-align: center;
-        color: #aaa; font-size: 12px; margin: 40px 0 25px;
+        color: #aaa; font-size: 12px; margin: 35px 0 20px;
     }
     .divider::before, .divider::after {
         content: ''; flex: 1; border-bottom: 1px solid #eee;
     }
     .divider span { padding: 0 15px; }
 
-    /* 💡 圓形 Google 登入按鈕 */
-    .social-login { display: flex; justify-content: center; }
-    .google-circle {
-        width: 50px; height: 50px; border-radius: 50%; background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #f0f0f0;
-        display: flex; align-items: center; justify-content: center;
-        transition: 0.2s; text-decoration: none;
+    /* 💡 長條形 Google 登入按鈕 */
+    .google-long-btn {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        width: 100%; background: white; color: #555; border: 1px solid #ddd;
+        padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold;
+        text-decoration: none; transition: 0.2s; box-sizing: border-box;
     }
-    .google-circle:active { transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .google-circle img { width: 22px; height: 22px; }
+    .google-long-btn:active { background: #f9f9f9; transform: scale(0.98); }
+    .google-long-btn img { width: 20px; height: 20px; }
 
     .footer-text { margin-top: 40px; font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; line-height: 1.6; }
 </style>
@@ -167,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <!-- 註冊與忘記密碼 -->
             <div class="helper-links">
                 <a href="register.php">註冊帳號</a>
-                <a href="#">忘記密碼？</a>
             </div>
 
             <!-- 分隔線 -->
@@ -175,12 +173,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <span>其他登入方式</span>
             </div>
 
-            <!-- 單一 Google 登入按鈕 -->
-            <div class="social-login">
-                <a href="google_login.php" class="google-circle" title="使用 Google 登入">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
-                </a>
-            </div>
+            <!-- 💡 單一長條形 Google 按鈕 -->
+            <a href="google_login.php" class="google-long-btn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+                使用 Google 登入
+            </a>
             
         </form>
     </div>
@@ -190,5 +187,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         Information Management Sophomore Project
     </div>
 </div>
-
-<?php include('footer.php'); ?>
