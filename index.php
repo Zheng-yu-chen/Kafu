@@ -218,15 +218,15 @@ $result = $conn->query($sql);
                 <div class="tag-group">
                     <label>
                         <input type="checkbox" name="low_cal" class="filter-tag-checkbox" <?php if($low_cal) echo 'checked'; ?>>
-                        <span class="filter-tag-label">🥗 低卡 (&lt; 500k)</span>
+                        <span class="filter-tag-label">低卡 (&lt; 500k)</span>
                     </label>
                     <label>
                         <input type="checkbox" name="high_pro" class="filter-tag-checkbox" <?php if($high_pro) echo 'checked'; ?>>
-                        <span class="filter-tag-label">🥩 高蛋白 (&gt; 20g)</span>
+                        <span class="filter-tag-label">高蛋白 (&gt; 20g)</span>
                     </label>
                     <label>
                         <input type="checkbox" name="is_veg" class="filter-tag-checkbox" <?php if($is_veg) echo 'checked'; ?>>
-                        <span class="filter-tag-label">🥬 素食</span>
+                        <span class="filter-tag-label">素食</span>
                     </label>
                 </div>
                 
@@ -326,9 +326,9 @@ $result = $conn->query($sql);
             </div>
 
             <div id="filter-section" style="display:none;" class="filter-options">
-                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="low_cal"> 🥗 低卡優先 (&lt; 500 kcal)</label>
-                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="high_pro"> 🥩 高蛋白需求 (&gt; 20g)</label>
-                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="is_veg"> 🥬 我想吃素 (素食專區)</label>
+                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="low_cal"> 低卡優先 (&lt; 500 kcal)</label>
+                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="high_pro"> 高蛋白需求 (&gt; 20g)</label>
+                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="is_veg"> 我想吃素 (素食專區)</label>
                 <button class="btn-submit" onclick="fetchRecommend('filter')">幫我抽天菜！</button>
             </div>
 

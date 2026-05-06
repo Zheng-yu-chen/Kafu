@@ -37,3 +37,6 @@ Thumbs.db
 *.bak
 *.tmp
 *~
+
+db.php
+google-api/
