@@ -14,12 +14,13 @@ $search = isset($_GET['search']) ? trim(mysqli_real_escape_string($conn, $_GET['
 
 // 2. 取得進階篩選參數
 $price_max = isset($_GET['price_max']) ? intval($_GET['price_max']) : 300; 
+$cal_max = isset($_GET['cal_max']) ? intval($_GET['cal_max']) : 2000;
 $is_veg = isset($_GET['is_veg']) ? 1 : 0;
 $low_cal = isset($_GET['low_cal']) ? 1 : 0;
 $high_pro = isset($_GET['high_pro']) ? 1 : 0;
 
-// 3. 判斷是否為「進階搜尋模式」
-$is_advanced_search = (!empty($search) || $price_max < 300 || $is_veg || $low_cal || $high_pro);
+// 3.  判斷是否為「進階搜尋模式」
+$is_advanced_search = (!empty($search) || $price_max < 300 || $cal_max < 2000 || $is_veg || $low_cal || $high_pro);
 
 if ($is_advanced_search) {
     // 模式 A：進階搜尋，顯示符合條件的「餐點」
@@ -37,6 +38,9 @@ if ($is_advanced_search) {
     
     // 價格拉桿篩選
     $sql .= " AND i.price <= $price_max";
+    
+    // 熱量上限篩選
+    $sql .= " AND i.calories <= $cal_max AND i.calories IS NOT NULL";
     
     // 營養標籤篩選
     if ($is_veg) $sql .= " AND i.is_vegetarian = 1";
@@ -268,6 +272,13 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                     </div>
                     <input type="range" name="price_max" min="0" max="300" step="10" value="<?php echo $price_max; ?>" oninput="document.getElementById('priceVal').innerText = '$' + this.value">
                 </div>
+                <div class="range-group">
+                    <div class="range-header">
+                        <span>熱量上限</span>
+                        <span id="calVal"><?php echo $cal_max; ?> kcal</span>
+                    </div>
+                    <input type="range" name="cal_max" min="200" max="2000" step="50" value="<?php echo $cal_max; ?>" oninput="document.getElementById('calVal').innerText = this.value + ' kcal'">
+                </div>
                 
                 <div class="tag-group">
                     <label>
@@ -412,7 +423,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     const urlParams = new URLSearchParams(window.location.search);
     
-    if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg') || (urlParams.has('price_max') && urlParams.get('price_max') !== '300')) {
+    if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg') || (urlParams.has('price_max') && urlParams.get('price_max') !== '300') || (urlParams.has('cal_max') && urlParams.get('cal_max') !== '2000')) {
         document.getElementById('advPanel').classList.add('active');
     }
 });

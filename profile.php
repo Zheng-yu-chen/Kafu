@@ -36,8 +36,8 @@ if ($is_logged_in) {
                    SUM(COALESCE(i.calories, l.total_calories)) as total_cal, 
                     SUM(COALESCE(i.protein, l.total_protein)) as total_pro,
                     SUM(CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END) as total_price, -- 👈 優先抓自訂價格，再抓學餐價格
-                    SUM(COALESCE(l.total_fat, i.fat, 0)) as total_fat, -- 👈 優先抓自訂脂肪
-                    SUM(COALESCE(l.total_carbs, i.carbs, 0)) as total_carbs --
+                    SUM(COALESCE(NULLIF(l.total_fat, 0), i.fat, 0)) as total_fat, -- 👈 用 NULLIF 把 0 轉 NULL，優先抓自訂脂肪
+                    SUM(COALESCE(NULLIF(l.total_carbs, 0), i.carbs, 0)) as total_carbs -- 👈 用 NULLIF 把 0 轉 NULL
                   FROM consumptionlogs l 
                   LEFT JOIN items i ON l.item_id = i.item_id 
                   WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";

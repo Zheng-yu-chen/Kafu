@@ -10,20 +10,26 @@ if (!isset($_SESSION['u_id'])) {
 if (!empty($_SESSION['tray'])) {
     $u_id = $_SESSION['u_id'];
     
-    // 對應你的 consumptionlogs 表格欄位：u_id, item_id, daily_meal, total_calories, price, recorded_at
-    $stmt = $conn->prepare("INSERT INTO consumptionlogs (u_id, item_id, daily_meal, total_calories, price, recorded_at) VALUES (?, ?, ?, ?, ?, ?)");
+    // 對應你的 consumptionlogs 表格欄位：u_id, item_id, daily_meal, total_calories, total_protein, total_fat, total_carbs, price, recorded_at
+    $stmt = $conn->prepare("INSERT INTO consumptionlogs (u_id, item_id, daily_meal, total_calories, total_protein, total_fat, total_carbs, price, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     $meal_map = ['早餐'=>1, '午餐'=>2, '晚餐'=>3, '點心'=>4, '全天'=>0];
 
     foreach ($_SESSION['tray'] as $item) {
         $item_id = intval($item['item_id']);
         
-        // 抓取餐點熱量與價格
+        // 抓取餐點營養資訊與價格
         $cal = 0;
+        $protein = 0;
+        $fat = 0;
+        $carbs = 0;
         $price = 0;
-        $res = $conn->query("SELECT calories, price FROM items WHERE item_id = $item_id");
+        $res = $conn->query("SELECT calories, protein, fat, carbs, price FROM items WHERE item_id = $item_id");
         if ($row = $res->fetch_assoc()) {
             $cal = $row['calories'];
+            $protein = $row['protein'];
+            $fat = $row['fat'];
+            $carbs = $row['carbs'];
             $price = $row['price'];
         }
         
@@ -32,7 +38,7 @@ if (!empty($_SESSION['tray'])) {
         // 將使用者選擇的日期加上現在的時間，存入 recorded_at
         $recorded_at = $item['eat_date'] . ' ' . date('H:i:s');
         
-        $stmt->bind_param("iiiids", $u_id, $item_id, $daily_meal, $cal, $price, $recorded_at);
+        $stmt->bind_param("iiidddds", $u_id, $item_id, $daily_meal, $cal, $protein, $fat, $carbs, $price, $recorded_at);
         $stmt->execute();
     }
     

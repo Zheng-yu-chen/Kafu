@@ -20,8 +20,9 @@ if ($user_res && $row = $user_res->fetch_assoc()) {
 // 確保抓取 items 表中的 price, fat, carbs 以計算總和與單項顯示
 $sql = "SELECT l.*, i.name as item_name, 
         CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END as final_price, 
-        COALESCE(l.total_fat, i.fat) as final_fat,   -- 👈 使用剛新增的 total_fat
-        COALESCE(l.total_carbs, i.carbs) as final_carbs -- 👈 使用剛新增的 total_carbs
+        COALESCE(NULLIF(l.total_protein, 0), i.protein) as final_protein, -- 👈 用 NULLIF 把 0 轉 NULL，回退到 items.protein
+        COALESCE(NULLIF(l.total_fat, 0), i.fat) as final_fat,   -- 👈 用 NULLIF 把 0 轉 NULL，回退到 items.fat
+        COALESCE(NULLIF(l.total_carbs, 0), i.carbs) as final_carbs -- 👈 用 NULLIF 把 0 轉 NULL，回退到 items.carbs
         FROM consumptionlogs l 
         LEFT JOIN items i ON l.item_id = i.item_id 
         WHERE l.u_id = ? 
@@ -119,7 +120,7 @@ while ($row = $result->fetch_assoc()) {
         
         foreach ($items as $log) {
             $day_cal += $log['total_calories'];
-            $day_pro += $log['total_protein'];
+            $day_pro += $log['final_protein'] ?? 0;
             $day_price += $log['final_price']; // 改用 final_price
             $day_fat += $log['final_fat'] ?? 0;
             $day_carbs += $log['final_carbs'] ?? 0;
@@ -168,7 +169,7 @@ while ($row = $result->fetch_assoc()) {
                 
                 <!-- 單項餐點的營養素並排 -->
                 <div class="item-macros">
-                    <span style="color:#4CAF50;">蛋白質 <?php echo number_format($log['total_protein'], 1); ?>g</span>
+                    <span style="color:#4CAF50;">蛋白質 <?php echo number_format($log['final_protein'] ?? 0, 1); ?>g</span>
                     <span style="color:#4CAF50;">脂肪 <?php echo number_format($log['final_fat'] ?? 0, 1); ?>g</span>
                     <span style="color:#4CAF50;">碳水 <?php echo number_format($log['final_carbs'] ?? 0, 1); ?>g</span>
                 </div>
