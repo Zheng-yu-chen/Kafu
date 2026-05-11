@@ -19,7 +19,7 @@ if ($user_res && $row = $user_res->fetch_assoc()) {
 
 // 確保抓取 items 表中的 price, fat, carbs 以計算總和與單項顯示
 $sql = "SELECT l.*, i.name as item_name, 
-        COALESCE(l.price, i.price) as final_price, 
+        CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END as final_price, 
         COALESCE(l.total_fat, i.fat) as final_fat,   -- 👈 使用剛新增的 total_fat
         COALESCE(l.total_carbs, i.carbs) as final_carbs -- 👈 使用剛新增的 total_carbs
         FROM consumptionlogs l 

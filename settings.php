@@ -14,7 +14,6 @@ $u_id = $_SESSION['u_id'];
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = $_POST['name']; 
     $goal_cal = intval($_POST['goal_cal']);
-    $goal_pro = intval($_POST['goal_pro']);
     
     $pref_veg = isset($_POST['pref_veg']) ? 1 : 0;
     $pref_low_cal = isset($_POST['pref_low_cal']) ? 1 : 0;
@@ -23,13 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     $sql = "UPDATE accounts SET 
             name = ?, 
-            goal_cal = ?, goal_pro = ?, 
+            goal_cal = ?, 
             pref_veg = ?, pref_low_cal = ?, 
             notify_meal = ?, notify_pickup = ? 
             WHERE u_id = ?";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("siiiiiii", $name, $goal_cal, $goal_pro, $pref_veg, $pref_low_cal, $notify_meal, $notify_pickup, $u_id);
+    $stmt->bind_param("siiiiiii", $name, $goal_cal, $pref_veg, $pref_low_cal, $notify_meal, $notify_pickup, $u_id);
     
     if($stmt->execute()) {
         echo "<script>alert('設定已儲存！');</script>";
@@ -123,13 +122,7 @@ $user = $res->fetch_assoc();
                 </div>
                 <input type="number" name="goal_cal" class="setting-input num-input" value="<?php echo $user['goal_cal'] ?? 2000; ?>">
             </div>
-            <div class="setting-item">
-                <div class="item-label">
-                    <span class="label-main">每日蛋白質目標 (g)</span>
-                    <span class="label-sub">建議成人攝取 50-60g 蛋白質</span>
-                </div>
-                <input type="number" name="goal_pro" class="setting-input num-input" value="<?php echo $user['goal_pro'] ?? 60; ?>">
-            </div>
+
         </div>
 
         <div class="section-title">🥗 飲食偏好</div>

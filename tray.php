@@ -118,7 +118,6 @@ $item_count = count($tray_items);
 
 <div class="header">
     <h1>待結算托盤</h1>
-    <p>確認無誤後請按下結算</p>
 </div>
 
 <?php if (!isset($_SESSION['u_id']) && $item_count > 0): ?>

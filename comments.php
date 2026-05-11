@@ -82,7 +82,6 @@ try {
 <div class="header-section">
     <div class="header-title">
         <h1>社群評價</h1>
-        <p>品項導向評價系統</p>
     </div>
 
     <div class="search-container">

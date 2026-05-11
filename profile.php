@@ -35,7 +35,7 @@ if ($is_logged_in) {
     $sql_stats = "SELECT 
                    SUM(COALESCE(i.calories, l.total_calories)) as total_cal, 
                     SUM(COALESCE(i.protein, l.total_protein)) as total_pro,
-                    SUM(COALESCE(l.price, i.price, 0)) as total_price, -- 👈 優先抓自訂價格，再抓學餐價格
+                    SUM(CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END) as total_price, -- 👈 優先抓自訂價格，再抓學餐價格
                     SUM(COALESCE(l.total_fat, i.fat, 0)) as total_fat, -- 👈 優先抓自訂脂肪
                     SUM(COALESCE(l.total_carbs, i.carbs, 0)) as total_carbs --
                   FROM consumptionlogs l 

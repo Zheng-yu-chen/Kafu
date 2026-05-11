@@ -3,6 +3,11 @@ session_start();
 include('db.php');
 include('header.php');
 
+$canRecommendRemaining = true;
+if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1, 2])) {
+    $canRecommendRemaining = false;
+}
+
 // 1. 取得一般篩選與搜尋參數
 $filter = isset($_GET['filter']) ? $_GET['filter'] : '全部';
 $search = isset($_GET['search']) ? trim(mysqli_real_escape_string($conn, $_GET['search'])) : '';
@@ -60,6 +65,32 @@ if ($is_advanced_search) {
 }
 
 $result = $conn->query($sql);
+
+$remaining_cal = null;
+$remaining_cal_text = "";
+if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
+    $u_id = $_SESSION['u_id'];
+    $goal_cal = 2000;
+    $goal_res = $conn->query("SELECT goal_cal FROM accounts WHERE u_id = $u_id");
+    if ($goal_res && $row = $goal_res->fetch_assoc()) {
+        $goal_cal = $row['goal_cal'] ?: 2000;
+    }
+
+    $today = date('Y-m-d');
+    $cal_res = $conn->query("SELECT SUM(COALESCE(i.calories, l.total_calories, 0)) AS total_cal
+                             FROM consumptionlogs l
+                             LEFT JOIN items i ON l.item_id = i.item_id
+                             WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'");
+    $consumed_cal = 0;
+    if ($cal_res && $cal_row = $cal_res->fetch_assoc()) {
+        $consumed_cal = (int)$cal_row['total_cal'];
+    }
+
+    $remaining_cal = max(0, $goal_cal - $consumed_cal);
+    $remaining_cal_text = "今日剩餘熱量：{$remaining_cal} kcal";
+} elseif (isset($_SESSION['u_id']) && !$canRecommendRemaining) {
+    $remaining_cal_text = "";
+}
 ?>
 
 <style>
@@ -74,7 +105,23 @@ $result = $conn->query($sql);
     .search-input-group { display: flex; gap: 8px; align-items: stretch; }
     
     .search-input-wrapper { flex: 1; position: relative; display: flex; }
-    
+    .search-extra { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .remaining-calorie { color: white; font-size: 14px; opacity: 0.95; }
+    .recommend-btn { background: #FFECB3; color: #663C00; border: none; border-radius: 20px; padding: 8px 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+    .recommend-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .recommend-panel { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 20px; }
+    .recommend-card { width: 100%; max-width: 380px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.2); }
+    .recommend-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; background: #002B5B; color: white; }
+    .recommend-title { font-size: 15px; font-weight: 700; }
+    .recommend-close { border: none; background: transparent; color: white; font-size: 20px; cursor: pointer; line-height: 1; }
+    .recommend-body { max-height: 320px; overflow-y: auto; padding: 14px 18px 18px; }
+    .recommend-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .recommend-item:last-child { border-bottom: none; }
+    .recommend-item-name { font-size: 15px; font-weight: 700; color: #002B5B; margin: 0; }
+    .recommend-item-meta { font-size: 12px; color: #666; margin: 4px 0 0; }
+    .recommend-empty { color: #555; font-size: 13px; line-height: 1.6; }
+    .recommend-actions-row { display: flex; justify-content: flex-end; padding: 0 18px 18px; }
+    .recommend-close-bottom { border: none; background: #f0f0f0; color: #333; border-radius: 12px; padding: 10px 16px; cursor: pointer; font-weight: bold; }
     .search-input { 
         width: 100%; padding: 10px 40px 10px 15px; 
         border-radius: 20px; border: none; outline: none; 
@@ -206,6 +253,13 @@ $result = $conn->query($sql);
                 <button type="button" class="adv-search-btn" onclick="toggleAdvPanel()">進階篩選</button>
             </div>
 
+            <?php if ($canRecommendRemaining && isset($_SESSION['u_id'])): ?>
+            <div class="search-extra">
+                <div class="remaining-calorie"><?php echo $remaining_cal_text; ?></div>
+                <button type="button" class="recommend-btn" onclick="fetchRecommendRemaining(<?php echo $remaining_cal ?? 0; ?>)">查看推薦餐點</button>
+            </div>
+            <?php endif; ?>
+
             <div class="adv-panel" id="advPanel">
                 <div class="range-group">
                     <div class="range-header">
@@ -233,6 +287,16 @@ $result = $conn->query($sql);
                 <button type="submit" class="submit-adv-btn">套用篩選</button>
                 <div style="text-align:center;">
                     <a href="index.php?filter=<?php echo urlencode($filter); ?>" style="font-size:12px; color:#999; text-decoration:none;">✕ 清除所有條件</a>
+                </div>
+            </div>
+
+            <div id="remainingRecommendPanel" class="recommend-panel" onclick="closeRecommendPanel(event)">
+                <div class="recommend-card" onclick="event.stopPropagation();">
+                    <div class="recommend-header">
+                        <span class="recommend-title">符合今日剩餘熱量的推薦餐點</span>
+                        <button type="button" class="recommend-close" onclick="closeRecommendPanel(event)">✕</button>
+                    </div>
+                    <div id="recommendBody" class="recommend-body"></div>
                 </div>
             </div>
         </form>
@@ -364,6 +428,8 @@ function toggleFilter() {
     document.getElementById('recommend-result').style.display = 'none';
 }
 
+const canRecommendRemaining = <?php echo $canRecommendRemaining ? 'true' : 'false'; ?>;
+
 function fetchRecommend(mode) {
     let url = 'get_recommend.php?mode=' + mode;
     
@@ -388,6 +454,48 @@ function fetchRecommend(mode) {
             resDiv.innerHTML = "<p style='color:#999; margin:0;'>暫時找不到符合條件的餐點...🥺<br>試著放寬條件看看！</p>";
         }
     });
+}
+
+function fetchRecommendRemaining(maxCal) {
+    if (!canRecommendRemaining) {
+        alert('管理員與店家身分無法使用剩餘熱量推薦功能。');
+        return;
+    }
+    const panel = document.getElementById('remainingRecommendPanel');
+    const body = document.getElementById('recommendBody');
+    panel.style.display = 'flex';
+    if (maxCal <= 0) {
+        body.innerHTML = "<p class='recommend-empty'>您今日已達或超過熱量目標，請先調整紀錄再查看推薦餐點。</p>";
+        return;
+    }
+
+    body.innerHTML = "<p class='recommend-empty'>讀取符合剩餘熱量的餐點...</p>";
+    fetch(`get_recommend.php?mode=remaining&max_cal=${encodeURIComponent(maxCal)}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.items && data.items.length) {
+            body.innerHTML = `
+                ${data.items.map(item => `
+                    <div class="recommend-item">
+                        <p class="recommend-item-name">${item.name}</p>
+                        <p class="recommend-item-meta">${item.restaurant} • ${item.calories} kcal • $${item.price}</p>
+                        <a href="restaurant_detail.php?r_id=${item.r_id}" style="color:#FF8C42; font-size:12px; font-weight:bold; text-decoration:none;">前往店家 ❯</a>
+                    </div>
+                `).join('')}
+            `;
+        } else {
+            body.innerHTML = "<p class='recommend-empty'>沒有找到符合剩餘熱量的餐點，可修改篩選條件或稍後再試。</p>";
+        }
+    })
+    .catch(() => {
+        body.innerHTML = "<p class='recommend-empty'>無法取得推薦，請稍後再試。</p>";
+    });
+}
+
+function closeRecommendPanel(event) {
+    if (event) event.stopPropagation();
+    const panel = document.getElementById('remainingRecommendPanel');
+    panel.style.display = 'none';
 }
 </script>
 
