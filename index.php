@@ -3,6 +3,7 @@ session_start();
 include('db.php');
 include('header.php');
 
+
 $canRecommendRemaining = true;
 if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1, 2])) {
     $canRecommendRemaining = false;
@@ -109,9 +110,21 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     .search-input-group { display: flex; gap: 8px; align-items: stretch; }
     
     .search-input-wrapper { flex: 1; position: relative; display: flex; }
-    .search-extra { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .remaining-calorie { color: white; font-size: 14px; opacity: 0.95; }
-    .recommend-btn { background: #FFECB3; color: #663C00; border: none; border-radius: 20px; padding: 8px 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+    .search-extra {
+    margin-top: 15px; /* 稍微增加與搜尋框的間距 */
+    display: flex;
+    justify-content: center; /* 水平置中核心 */
+    align-items: center;
+    width: 100%;
+}
+    .search-extra {
+    margin-top: 15px; /* 稍微增加與搜尋框的間距 */
+    display: flex;
+    justify-content: center; /* 水平置中核心 */
+    align-items: center;
+    width: 100%;
+}
+    
     .recommend-btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .recommend-panel { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 20px; }
     .recommend-card { width: 100%; max-width: 380px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.2); }
@@ -237,11 +250,11 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
 </style>
 
 <div class="top-banner">
-    <div class="header-container">
-        <a href="index.php"><img src="logo.png" alt="Logo" class="logo-img"></a>
-        <h1 class="hero-title">輔大美食探索</h1>
-    </div>
-    
+    <div class="header-container" style="display: flex; justify-content: center; align-items: center; position: relative;">
+        <a href="index.php">
+            <img src="logo.png" alt="Logo" class="logo-img">
+        </a>
+        </div>
     <div class="search-wrapper">
         <form action="index.php" method="GET" id="searchForm">
             <input type="hidden" name="filter" value="<?php echo htmlspecialchars($filter); ?>">
@@ -258,11 +271,20 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
             </div>
 
             <?php if ($canRecommendRemaining && isset($_SESSION['u_id'])): ?>
-            <div class="search-extra">
-                <div class="remaining-calorie"><?php echo $remaining_cal_text; ?></div>
-                <button type="button" class="recommend-btn" onclick="fetchRecommendRemaining(<?php echo $remaining_cal ?? 0; ?>)">查看推薦餐點</button>
-            </div>
-            <?php endif; ?>
+<div class="search-extra" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+    <div class="remaining-calorie">
+        今日剩餘熱量：<?php echo $remaining_cal; ?> kcal
+    </div>
+    <div id="random-dice-btn" onclick="fetchRandomDish()" 
+         style="cursor: pointer; font-size: 20px; background: rgba(255,255,255,0.2); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        🎲
+    </div>
+    <a href="favorites.php" id="home-favorite-btn" title="查看收藏餐點"
+           style="text-decoration: none; cursor: pointer; font-size: 18px; background: rgba(255,255,255,0.2); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            ❤️
+        </a>
+</div>
+<?php endif; ?>
 
             <div class="adv-panel" id="advPanel">
                 <div class="range-group">
@@ -597,6 +619,31 @@ function closeRecommendPanel(event) {
     const panel = document.getElementById('remainingRecommendPanel');
     panel.style.display = 'none';
 }
+
+function fetchRandomDish() {
+    const btn = document.getElementById('random-dice-btn');
+    
+    // 旋轉動畫
+    btn.style.transform = 'rotate(720deg)';
+    
+    fetch('get_recommend.php?mode=random')
+    .then(res => res.json())
+    .then(data => {
+        if(data.success && data.r_id) {
+            // 取得餐廳名稱 (restaurant)，傳給下一頁顯示
+            const resName = encodeURIComponent(data.restaurant || "好吃的店家");
+            window.location.href = `restaurant_detail.php?r_id=${data.r_id}&from=dice&name=${resName}`;
+        } else {
+            alert('抽籤失敗，請稍後再試');
+            btn.style.transform = 'rotate(0deg)';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        btn.style.transform = 'rotate(0deg)';
+    });
+}
+
 </script>
 
 <?php include('footer.php'); ?>

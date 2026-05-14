@@ -38,7 +38,8 @@ if (!empty($_SESSION['tray'])) {
         // 將使用者選擇的日期加上現在的時間，存入 recorded_at
         $recorded_at = $item['eat_date'] . ' ' . date('H:i:s');
         
-        $stmt->bind_param("iiidddds", $u_id, $item_id, $daily_meal, $cal, $protein, $fat, $carbs, $price, $recorded_at);
+        // 修正後：將 "iiidddds" 改為 "iiiddddds" (多加一個 d)
+        $stmt->bind_param("iiiddddds", $u_id, $item_id, $daily_meal, $cal, $protein, $fat, $carbs, $price, $recorded_at);
         $stmt->execute();
     }
     

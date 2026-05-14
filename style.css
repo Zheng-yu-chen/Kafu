@@ -91,8 +91,72 @@ body {
     text-decoration: none;
     display: block;
 }
+/* 愛心按鈕樣式與動畫 */
+.favorite-btn {
+    transition: transform 0.2s ease;
+    user-select: none;
+}
 
+.favorite-btn:active {
+    transform: scale(1.3);
+}
 
+.favorite-btn.active {
+    color: #E53935; /* 變成紅色 */
+}
 
+/* 確保餐點資訊不會因為加入愛心而排版亂掉 */
+.item-info {
+    flex: 1;
+}
 
+.item-name {
+    margin: 0;
+    font-size: 16px;
+    color: var(--fujen-blue, #002B5B);
+    display: inline-block;
+    vertical-align: middle;
+}
+/* 設定收藏頁面專用的 Header 樣式 */
+/* 1. 確保藍色 Header 有足夠的空間，且層級在最上方 */
+.fav-header-section {
+    background-color: var(--fujen-blue);
+    color: white;
+    width: 100%;
+    padding-bottom: 40px; /* 增加底部間距，撐開藍色區域 */
+    position: relative;   /* 建立定位上下文 */
+    z-index: 1;           /* 確保它在垂直層級上不會被輕易蓋掉 */
+}
 
+/* 2. 修正返回按鈕，確保它是白色且可見 */
+.back-nav {
+    padding: 15px 20px;
+    text-align: left;
+}
+
+.back-btn {
+    color: #ffffff !important; /* 強制白色 */
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    display: inline-block;
+    position: relative;
+    z-index: 10; /* 確保按鈕在最最上面，點得到 */
+}
+
+/* 3. 修正標題文字顏色 */
+.fav-title {
+    color: #ffffff;
+    margin: 10px 0;
+    text-align: center;
+}
+
+/* 4. 修正下方列表，不要讓它過度往上推 */
+.fav-list-container {
+    position: relative;
+    background-color: #f4f7f9;
+    border-radius: 20px 20px 0 0;
+    margin-top: -15px; /* 稍微重疊即可，不要蓋太多 */
+    padding: 20px;
+    z-index: 5;
+}
