@@ -40,3 +40,9 @@ Thumbs.db
 
 db.php
 google-api/
+
+
+
+
+# 忽略包含金鑰的保險箱檔案
+env.php

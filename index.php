@@ -380,54 +380,143 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     <?php endif; ?>
 </div>
 
-<!-- =============================== -->
-<!-- 👨‍🍳 廚師小助理區塊              -->
-<!-- =============================== -->
 <div class="ai-fixed-wrapper" id="ai-wrapper">
     <div id="ai-assistant-fab" onclick="toggleAssistant()">
-        <img src="icon/chef_icon.png" alt="廚師助理"> 
+        <img src="images/fju.png" alt="AI助理"> 
     </div>
 
-    <div id="assistant-card" class="assistant-card">
+    <div id="assistant-card" class="assistant-card" style="width: 320px;">
         <div class="assistant-header">
-            <span style="font-weight: bold;">美食家助理</span>
+            <span style="font-weight: bold;">輔大美食 AI 助手</span>
             <span onclick="toggleAssistant()" style="cursor:pointer; opacity: 0.7;">✕</span>
         </div>
-        <div class="assistant-body">
-            <p style="margin: 0;">不知道吃什麼？讓我幫你抽！</p>
-            <div class="recommend-actions">
-                <button class="btn-action" onclick="fetchRecommend('random')">🎲 隨機推薦</button>
-                <button class="btn-action" onclick="toggleFilter()">🔍 挑選需求</button>
+        
+        <div id="chat-box" style="height: 300px; overflow-y: auto; padding: 15px; background: #fdfdfd; display: flex; flex-direction: column; gap: 10px;">
+            <div style="background: #eee; padding: 8px 12px; border-radius: 10px; align-self: flex-start; max-width: 80%; font-size: 13px;">
+                嗨！我是輔大美食小助手，今天想吃點什麼？可以問我「心園有什麼好吃的？」或者「100元以內的午餐」。
             </div>
+        </div>
 
-            <div id="filter-section" style="display:none;" class="filter-options">
-                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="low_cal"> 低卡優先 (&lt; 500 kcal)</label>
-                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="high_pro"> 高蛋白需求 (&gt; 20g)</label>
-                <label class="checkbox-item"><input type="checkbox" class="pref-check" value="is_veg"> 我想吃素 (素食專區)</label>
-                <button class="btn-submit" onclick="fetchRecommend('filter')">幫我抽天菜！</button>
-            </div>
-
-            <div id="recommend-result" style="display:none;"></div>
+        <div style="padding: 10px; border-top: 1px solid #eee; display: flex; gap: 5px;">
+            <input type="text" id="chat-input" placeholder="想吃什麼..." style="flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 5px 15px; font-size: 13px; outline: none;">
+            <button onclick="sendMessage()" style="background: var(--primary-orange, #FF8C42); color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; display: flex; align-items: center; justify-content: center;">➤</button>
         </div>
     </div>
 </div>
 
 <script>
-function toggleAdvPanel() {
-    const panel = document.getElementById('advPanel');
-    panel.classList.toggle('active');
+// --- 1. 送出訊息與 API 串接 ---
+async function sendMessage() {
+    const chatInput = document.getElementById('chat-input');
+    const chatBox = document.getElementById('chat-box');
+    if (!chatInput || !chatBox) return;
+
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    // 顯示使用者訊息
+    appendMessage('user', message);
+    chatInput.value = '';
+
+    // 顯示思考中
+    const loadingId = 'loading-' + Date.now();
+    appendMessage('ai', '正在幫你挑選美食...', loadingId);
+
+    try {
+        const response = await fetch('chat_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: message })
+        });
+
+        const rawText = await response.text(); // 先抓原始文字，方便 Debug
+        
+        try {
+            const data = JSON.parse(rawText);
+            document.getElementById(loadingId).innerText = data.reply || "我現在有點頭暈，晚點再說。";
+        } catch (jsonErr) {
+            // 如果 PHP 報錯（噴出 HTML 錯誤訊息），會在這裡捕捉到
+            console.error("PHP 回傳內容異常:", rawText);
+            document.getElementById(loadingId).innerText = "後端回傳格式不對，請檢查 chat_api.php。";
+        }
+    } catch (e) {
+        console.error("Fetch 錯誤:", e);
+        document.getElementById(loadingId).innerText = "網路連線失敗 🥺";
+    }
 }
 
+// --- 2. 訊息氣泡生成 ---
+function appendMessage(role, text, id = '') {
+    const chatBox = document.getElementById('chat-box');
+    const msgDiv = document.createElement('div');
+    
+    // 樣式調整
+    msgDiv.style.padding = "10px 14px";
+    msgDiv.style.borderRadius = "15px";
+    msgDiv.style.fontSize = "13px";
+    msgDiv.style.maxWidth = "85%";
+    msgDiv.style.marginBottom = "8px";
+    msgDiv.style.lineHeight = "1.4";
+    
+    if (role === 'user') {
+        msgDiv.style.alignSelf = "flex-end";
+        msgDiv.style.background = "#002B5B"; // 輔大藍
+        msgDiv.style.color = "white";
+        msgDiv.style.borderBottomRightRadius = "2px";
+    } else {
+        msgDiv.style.alignSelf = "flex-start";
+        msgDiv.style.background = "#f0f0f0";
+        msgDiv.style.color = "#333";
+        msgDiv.style.borderBottomLeftRadius = "2px";
+        if (id) msgDiv.id = id;
+    }
+    
+    msgDiv.innerText = text;
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// --- 3. 初始化與事件監聽 ---
 document.addEventListener("DOMContentLoaded", function() {
-    document.body.appendChild(document.getElementById('ai-wrapper'));
-    
+    // 確保 AI 助理按鈕在最上層
+    const aiWrapper = document.getElementById('ai-wrapper');
+    if (aiWrapper) document.body.appendChild(aiWrapper);
+
+    // 綁定 Enter 鍵
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    }
+
+    // --- 原本的篩選面板與推薦功能 (保留) ---
     const urlParams = new URLSearchParams(window.location.search);
-    
-    if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg') || (urlParams.has('price_max') && urlParams.get('price_max') !== '300') || (urlParams.has('cal_max') && urlParams.get('cal_max') !== '2000')) {
-        document.getElementById('advPanel').classList.add('active');
+    if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg')) {
+        const advPanel = document.getElementById('advPanel');
+        if (advPanel) advPanel.classList.add('active');
     }
 });
 
+// 切換助理視窗顯示
+function toggleAssistant() {
+    const card = document.getElementById('assistant-card');
+    if (card) {
+        const isHidden = card.style.display === 'none' || card.style.display === '';
+        card.style.display = isHidden ? 'block' : 'none';
+        // 開啟時自動捲動到底部
+        if (isHidden) {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+}
+
+// 原本的進階篩選切換
+function toggleAdvPanel() {
+    const panel = document.getElementById('advPanel');
+    if (panel) panel.classList.toggle('active');
+}
 function toggleAssistant() {
     const card = document.getElementById('assistant-card');
     card.style.display = (card.style.display === 'block') ? 'none' : 'block';
