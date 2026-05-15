@@ -67,6 +67,7 @@ if ($is_advanced_search) {
         $filter_safe = mysqli_real_escape_string($conn, $filter);
         $sql .= " AND r.location = '$filter_safe'";
     }
+    $sql .= " ORDER BY r.r_id ASC";
 }
 
 $result = $conn->query($sql);

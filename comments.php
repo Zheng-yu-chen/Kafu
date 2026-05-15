@@ -5,19 +5,19 @@ include('header.php');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+// 修改後的 SQL：改以餐廳 (r_id) 為主體進行統計
 $sql = "SELECT 
-            i.item_id, 
-            i.name AS item_name, 
+            r.r_id, 
             r.name AS res_name, 
             r.location,
+            r.image_url,
             AVG(c.rating) AS avg_rating,
             COUNT(c.com_id) AS total_comments
-        FROM comments c
-        JOIN items i ON c.item_id = i.item_id
-        JOIN categories cat ON i.c_id = cat.c_id
-        JOIN restaurants r ON cat.r_id = r.r_id
-        WHERE c.status = 1 
-        GROUP BY i.item_id, i.name, r.name, r.location
+        FROM restaurants r
+        LEFT JOIN categories cat ON r.r_id = cat.r_id
+        LEFT JOIN items i ON cat.c_id = i.c_id
+        LEFT JOIN comments c ON i.item_id = c.item_id AND c.status = 1
+        GROUP BY r.r_id, r.name, r.location, r.image_url
         ORDER BY avg_rating DESC, total_comments DESC";
 
 try {
@@ -37,7 +37,6 @@ try {
     .header-title h1 { margin: 0; font-size: 24px; }
     .header-title p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
 
-    /* 💡 修正：把 margin-bottom 加大到 25px，讓底下的篩選按鈕不會貼得太緊 */
     .search-container { position: relative; margin-bottom: 25px; }
     .search-input { width: 100%; padding: 12px 15px 12px 40px; border-radius: 25px; border: none; font-size: 14px; outline: none; box-sizing: border-box; }
     .search-icon { position: absolute; left: 15px; top: 12px; color: #999; }
@@ -68,13 +67,13 @@ try {
     }
     
     .comment-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; text-decoration: none; color: inherit; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .item-img { width: 60px; height: 60px; border-radius: 10px; background: #f4f7f9; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 28px; flex-shrink: 0; }
+    .res-img-thumb { width: 60px; height: 60px; border-radius: 10px; background: #f4f7f9; margin-right: 15px; object-fit: cover; flex-shrink: 0; }
     .comment-info { flex: 1; overflow: hidden; }
     .comment-info h3 { margin: 0; font-size: 16px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .comment-info p { margin: 4px 0 8px; font-size: 12px; color: #888; }
     .rating-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
     .star { color: var(--primary-orange, #FF8C42); font-weight: bold; }
-    .count-text { color: #bbb; }
+    .count-text { color: #888; font-size: 12px; }
     .arrow { color: #ccc; margin-left: 10px; font-weight: bold; font-size: 18px; }
     .hidden { display: none !important; }
 </style>
@@ -82,11 +81,12 @@ try {
 <div class="header-section">
     <div class="header-title">
         <h1>社群評價</h1>
+        <p>挑選想查看評價的輔大校園美食店家</p>
     </div>
 
     <div class="search-container">
         <span class="search-icon">🔍</span>
-        <input type="text" id="searchInput" class="search-input" placeholder="搜尋餐點或店家..." onkeyup="filterComments()">
+        <input type="text" id="searchInput" class="search-input" placeholder="搜尋店家名稱..." onkeyup="filterComments()">
     </div>
 
     <div class="filter-row">
@@ -106,20 +106,19 @@ try {
 <div class="comment-list" id="commentList">
     <?php if ($result && $result->num_rows > 0): ?>
         <?php while($row = $result->fetch_assoc()): ?>
-            <a href="comment_detail.php?item_id=<?php echo $row['item_id']; ?>" 
+            <a href="comments_restaurant.php?r_id=<?php echo $row['r_id']; ?>" 
                class="comment-card" 
-               data-name="<?php echo htmlspecialchars($row['item_name'] . $row['res_name']); ?>"
+               data-name="<?php echo htmlspecialchars($row['res_name']); ?>"
                data-loc="<?php echo $row['location']; ?>">
                 
-
+                <img src="images/<?php echo htmlspecialchars($row['image_url'] ?: 'default.jpg'); ?>" class="res-img-thumb" alt="店家圖片">
                 
                 <div class="comment-info">
-                    <h3><?php echo htmlspecialchars($row['item_name']); ?></h3>
-                    <p><?php echo htmlspecialchars($row['res_name']); ?> • <?php echo htmlspecialchars($row['location']); ?></p>
+                    <h3><?php echo htmlspecialchars($row['res_name']); ?></h3>
+                    <p>📍<?php echo htmlspecialchars($row['location']); ?></p>
                     <div class="rating-row">
-                        <span class="star">★ <?php echo number_format($row['avg_rating'], 1); ?></span>
-                        <span class="count-text">(<?php echo $row['total_comments']; ?>)</span> 
-                        <span style="color:#888;">💬 <?php echo $row['total_comments']; ?></span>
+                        <span class="star">★ <?php echo $row['avg_rating'] ? number_format($row['avg_rating'], 1) : '0.0'; ?></span>
+                        <span style="color:#888;">💬 <?php echo $row['total_comments']; ?></span> 
                     </div>
                 </div>
                 <div class="arrow">❯</div>
