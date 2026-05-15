@@ -109,8 +109,8 @@ $comments_result = $stmt_comments->get_result();
         right: 12px;         
         top: 50%;
         transform: translateY(-50%);
-        width: 16px;
-        height: 16px;
+        width: 20px;
+        height: 20px;
         object-fit: contain;
         opacity: 0.6;
         cursor: pointer; 
@@ -118,7 +118,7 @@ $comments_result = $stmt_comments->get_result();
     }
     .search-input-wrapper .search-icon:hover { opacity: 1; }
     
-    /* 💡 唯獨保留：右側搜尋放大鏡點擊時的下壓縮小動態效果 */
+
     .search-input-wrapper .search-icon:active {
         transform: translateY(-50%) scale(0.8);
         opacity: 0.5;
@@ -135,14 +135,12 @@ $comments_result = $stmt_comments->get_result();
         box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         transition: border-color 0.2s, box-shadow 0.2s;
     }
-    
-    /* 💡 唯獨保留：搜尋框點擊準備打字時的外框亮起效果 */
+
     .control-search:focus {
         border-color: #002B5B;
         box-shadow: 0 2px 8px rgba(0, 43, 91, 0.1);
     }
 
-    /* 💡 旁邊那個：調回純靜態樣式，點擊不會再縮小 */
     .control-sort {
         padding: 0 15px;
         border-radius: 20px;
@@ -229,14 +227,14 @@ $comments_result = $stmt_comments->get_result();
             <?php endwhile; ?>
         <?php else: ?>
             <div style="text-align:center; color:#ccc; padding: 50px 0;">
-                <p style="font-size: 40px; margin: 0;">💬</p>
-                <p style="margin-top: 10px;">這家餐廳目前還沒有收到任何餐點評價</p>
+                <p style="font-size: 40px; margin: 0;"></p>
+                <p style="margin-top: 10px;">這家餐廳目前沒有任何餐點評價</p>
             </div>
         <?php endif; ?>
     </div>
 
     <div id="noMatchMessage" class="hidden" style="text-align:center; color:#ccc; padding: 50px 0;">
-        <p style="font-size: 40px; margin: 0;">🔍</p>
+        <p style="font-size: 40px; margin: 0;"></p>
         <p style="margin-top: 10px;">找不到符合關鍵字的評價內容喔！</p>
     </div>
 </div>
@@ -254,7 +252,7 @@ $comments_result = $stmt_comments->get_result();
 
         if (cards.length === 0) return;
 
-        // Step 1: 關鍵字過濾
+        //關鍵字過濾
         cards.forEach(card => {
             const text = card.getAttribute('data-text');
             if (text.includes(keyword)) {
@@ -264,7 +262,7 @@ $comments_result = $stmt_comments->get_result();
             }
         });
 
-        // Step 2: 星級與時間排序
+        //星級與時間排序
         cards.sort((a, b) => {
             if (sortMode === 'latest') {
                 return b.getAttribute('data-time') - a.getAttribute('data-time'); 
@@ -276,10 +274,8 @@ $comments_result = $stmt_comments->get_result();
             return 0;
         });
 
-        // Step 3: 重新掛載 DOM 節點
         cards.forEach(card => container.appendChild(card));
 
-        // Step 4: 無結果提示
         const hasVisible = cards.some(card => !card.classList.contains('hidden'));
         const noMatchMsg = document.getElementById('noMatchMessage');
         if (hasVisible) {

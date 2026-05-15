@@ -152,9 +152,9 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
         display: flex; align-items: center; justify-content: center;
     }
     .search-icon-btn img {
-        width: 18px; height: 18px; object-fit: contain; opacity: 0.6; transition: 0.2s;
+        width: 22px; height: 22px; object-fit: contain; opacity: 0.6; transition: 0.2s;
     }
-    .search-icon-btn:active img { opacity: 1; transform: scale(0.9); }
+    .search-icon-btn:active img { opacity: 1; transform: scale(0.8); }
 
     .adv-search-btn { background: var(--primary-orange, #FF8C42); color: white; border: none; border-radius: 20px; padding: 0 15px; cursor: pointer; font-weight: bold; font-size: 13px;}
     
@@ -231,7 +231,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); pointer-events: auto; overflow: hidden; 
     }
-    #ai-assistant-fab img { width: 36px; height: 36px; object-fit: contain; }
+    #ai-assistant-fab img { width: 54px; height: 54px; object-fit: contain; border-radius: 50%;}
 
     .assistant-card {
         position: absolute !important; bottom: 170px; right: 25px;
@@ -405,7 +405,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
 
 <div class="ai-fixed-wrapper" id="ai-wrapper">
     <div id="ai-assistant-fab" onclick="toggleAssistant()">
-        <img src="images/fju.png" alt="AI助理"> 
+        <img src="images/fju.jpg" alt="AI助理"> 
     </div>
 
     <div id="assistant-card" class="assistant-card" style="width: 320px;">

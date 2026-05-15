@@ -5,7 +5,6 @@ include('header.php');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-// 修改後的 SQL：改以餐廳 (r_id) 為主體進行統計
 $sql = "SELECT 
             r.r_id, 
             r.name AS res_name, 
@@ -18,7 +17,7 @@ $sql = "SELECT
         LEFT JOIN items i ON cat.c_id = i.c_id
         LEFT JOIN comments c ON i.item_id = c.item_id AND c.status = 1
         GROUP BY r.r_id, r.name, r.location, r.image_url
-        ORDER BY avg_rating DESC, total_comments DESC";
+        ORDER BY avg_rating DESC, r.r_id ASC";
 
 try {
     $result = $conn->query($sql);
@@ -38,8 +37,39 @@ try {
     .header-title p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
 
     .search-container { position: relative; margin-bottom: 25px; }
-    .search-input { width: 100%; padding: 12px 15px 12px 40px; border-radius: 25px; border: none; font-size: 14px; outline: none; box-sizing: border-box; }
-    .search-icon { position: absolute; left: 15px; top: 12px; color: #999; }
+    
+    .search-input { 
+        width: 100%; 
+        padding: 12px 40px 12px 15px; 
+        border-radius: 25px; 
+        border: none; 
+        font-size: 14px; 
+        outline: none; 
+        box-sizing: border-box; 
+        transition: box-shadow 0.2s;
+    }
+
+    .search-input:focus {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .search-icon { 
+        position: absolute; 
+        right: 15px; 
+        top: 50%; 
+        transform: translateY(-50%); 
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        opacity: 0.6;
+        cursor: pointer;
+        transition: transform 0.1s ease, opacity 0.2s;
+    }
+    .search-icon:hover { opacity: 1; }
+    .search-icon:active {
+        transform: translateY(-50%) scale(0.8);
+        opacity: 0.5;
+    }
 
     .filter-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
     .filter-row::-webkit-scrollbar { display: none; } 
@@ -52,11 +82,18 @@ try {
         margin: -20px 20px 15px; 
         position: relative; 
         z-index: 10; 
-        padding: 15px; 
+        height: 50px;      
+        padding: 0 15px;    
         border-radius: 12px; 
         display: flex; justify-content: center; align-items: center; 
         text-decoration: none; font-weight: bold; gap: 10px; 
         box-shadow: 0 4px 10px rgba(255,140,66,0.3); 
+        transition: transform 0.1s ease, box-shadow 0.1s ease; 
+    }
+
+    .share-banner:active {
+        transform: scale(0.96); 
+        box-shadow: 0 2px 5px rgba(255,140,66,0.2);
     }
 
     .comment-list { 
@@ -73,7 +110,6 @@ try {
     .comment-info p { margin: 4px 0 8px; font-size: 12px; color: #888; }
     .rating-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
     .star { color: var(--primary-orange, #FF8C42); font-weight: bold; }
-    .count-text { color: #888; font-size: 12px; }
     .arrow { color: #ccc; margin-left: 10px; font-weight: bold; font-size: 18px; }
     .hidden { display: none !important; }
 </style>
@@ -85,8 +121,8 @@ try {
     </div>
 
     <div class="search-container">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="searchInput" class="search-input" placeholder="搜尋店家名稱..." onkeyup="filterComments()">
+        <img src="icon/search_icon.png" class="search-icon" alt="搜尋" onclick="filterComments()">
+        <input type="text" id="searchInput" class="search-input" placeholder="搜尋店家名稱..." onkeydown="if(event.key === 'Enter') filterComments()">
     </div>
 
     <div class="filter-row">
@@ -99,7 +135,8 @@ try {
 
 <?php if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3): ?>
 <a href="post_comment.php" class="share-banner">
-    <span>📷</span> 分享我的用餐體驗
+    <img src="icon/camera_icon.png" style="width: 32px; height: 32px; object-fit: contain; transform: translateY(1px); background: transparent !important;" alt="相機"> 
+    分享我的用餐體驗
 </a>
 <?php endif; ?>
 
@@ -118,7 +155,7 @@ try {
                     <p>📍<?php echo htmlspecialchars($row['location']); ?></p>
                     <div class="rating-row">
                         <span class="star">★ <?php echo $row['avg_rating'] ? number_format($row['avg_rating'], 1) : '0.0'; ?></span>
-                        <span style="color:#888;">💬 <?php echo $row['total_comments']; ?></span> 
+                        <span style="color:#888;">💬<?php echo $row['total_comments']; ?> </span> 
                     </div>
                 </div>
                 <div class="arrow">❯</div>
@@ -131,7 +168,7 @@ try {
 
 <script>
     function filterComments() {
-        let input = document.getElementById('searchInput').value.toLowerCase();
+        let input = document.getElementById('searchInput').value.toLowerCase().trim();
         let cards = document.getElementsByClassName('comment-card');
         for (let card of cards) {
             let name = card.getAttribute('data-name').toLowerCase();
@@ -139,6 +176,7 @@ try {
             else card.classList.add('hidden');
         }
     }
+    
     function filterByLocation(loc, btn) {
         document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
