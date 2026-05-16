@@ -10,6 +10,7 @@ $is_logged_in = ($u_id !== null);
 // 預設變數初始化
 $user_name = "訪客模式"; 
 $user_account = "尚未登入"; 
+$user_photo = null; // 💡 新增：用來儲存資料庫撈出來的頭像檔名或路徑
 $display_cal = 0; 
 $display_pro = 0;
 // 💡 新增：價格、脂肪、碳水的變數
@@ -21,13 +22,15 @@ $chart_labels = [];
 $chart_data = [];
 
 if ($is_logged_in) {
-    // A. 抓取帳號資訊與目標熱量
-    $user_query = "SELECT name, accounts, goal_cal FROM accounts WHERE u_id = $u_id";
+    // A. 修改 SQL 加入 user_photo
+    $user_query = "SELECT name, accounts, goal_cal, user_photo FROM accounts WHERE u_id = $u_id";
     $user_res = $conn->query($user_query);
+    
     if ($user_res && $row = $user_res->fetch_assoc()) {
         $user_name = $row['name'] ?: "同學您好";
         $user_account = $row['accounts'];
         $goal_cal = $row['goal_cal'] ?: 2000;
+        $user_photo = $row['user_photo']; // 💡 讀取頭像欄位
     }
 
     // B. 💡 抓取今日進度：修改 SQL，一併加總 price, fat, carbs
@@ -85,10 +88,34 @@ if ($is_logged_in) {
 <style>
     body { background: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
     .profile-header { background-color: #002B5B; color: white; padding: 60px 20px 80px; display: flex; align-items: center; gap: 15px; position: relative; }
-    .avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; }
-    .user-info h2 { margin: 0; font-size: 20px; }
-    .user-info p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
-    
+
+/* 頭像外框：維持乾淨的圓形對齊 */
+.avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; }
+.avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 使用者資訊區塊：改為垂直排列，並微調間距 */
+.user-info { display: flex; flex-direction: column; gap: 6px; }
+.user-info h2 { margin: 0; font-size: 20px; line-height: 1.2; }
+.user-info p { margin: 0; font-size: 13px; opacity: 0.8; }
+
+/* 💡 姓名底下的點擊提示按鈕樣式 */
+.upload-hint { 
+    font-size: 11px; 
+    background: rgba(255, 255, 255, 0.15); 
+    padding: 3px 10px; 
+    border-radius: 12px; 
+    cursor: pointer; 
+    transition: 0.2s; 
+    align-self: flex-start; /* 讓按鈕寬度根據文字長度自適應，不會撐滿整行 */
+    display: inline-flex;
+    align-items: center;
+}
+
+/* 滑鼠懸停效果：亮起來 */
+.upload-hint:hover { 
+    background: rgba(255, 255, 255, 0.3); 
+    transform: scale(1.02); 
+}
     .stats-card-combined {
         background: white; border-radius: 15px; padding: 20px;
         margin: -40px 20px 20px; position: relative; z-index: 10; 
@@ -130,9 +157,34 @@ if ($is_logged_in) {
 </style>
 
 <div class="profile-header">
-    <div class="avatar-circle"><?php echo $is_logged_in ? "👤" : "👣"; ?></div>
+    <div class="avatar-container" onclick="document.getElementById('avatarInput').click();">
+        <div class="avatar-circle">
+            <?php 
+            if ($is_logged_in) {
+                if (!empty($user_photo) && file_exists("uploads/" . $user_photo)) {
+                    echo '<img src="uploads/' . htmlspecialchars($user_photo) . '" alt="頭像">';
+                } else {
+                    echo "👤"; 
+                }
+            } else {
+                echo "👣"; 
+            }
+            ?>
+        </div>
+        <?php if ($is_logged_in): ?>
+            <div class="upload-hint">更換頭像</div>
+        <?php endif; ?>
+    </div>
+
     <div class="user-info">
         <h2><?php echo htmlspecialchars($user_name); ?></h2>
+        
+        <?php if ($is_logged_in): ?>
+            <form id="avatarForm" action="upload_avatar.php" method="POST" enctype="multipart/form-data" style="display: none;">
+                <input type="file" id="avatarInput" name="avatar" accept="image/*" onchange="document.getElementById('avatarForm').submit();">
+            </form>
+        <?php endif; ?>
+
         <p><?php echo $is_logged_in ? "帳號：" . htmlspecialchars($user_account) : "登入後開啟健康追蹤功能"; ?></p>
     </div>
     <?php if (!$is_logged_in): ?>

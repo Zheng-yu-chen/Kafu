@@ -168,13 +168,29 @@ $result = $conn->query($sql);
     .date-input { width: 100%; padding: 12px 12px 12px 35px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
     
     .meal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .meal-option input { display: none; }
-    .meal-option span { 
-        display: block; text-align: center; padding: 12px; background: #f8f9fa; 
-        border-radius: 8px; font-size: 14px; color: #555; cursor: pointer; transition: 0.2s;
+    .meal-option { 
+        display: block; 
     }
+    .meal-option input { display: none; }
+
+    .meal-option span { 
+        display: block; text-align: center; padding: 12px; 
+        background: #eee;          
+        color: #333;               
+        border-radius: 8px; font-size: 14px; cursor: pointer; 
+        box-sizing: border-box;         
+        border: 1px solid transparent; 
+        transition: transform 0.1s ease, background 0.2s, color 0.2s; 
+    }
+    
+    .meal-option span:active {
+        transform: scale(0.94);    
+    }
+
     .meal-option input:checked + span { 
-        background: #f0f5fa; color: var(--fujen-blue, #002B5B); font-weight: bold; 
+        background: var(--fujen-blue, #002B5B);                    
+        color: rgb(255, 255, 255);
+        font-weight: bold; 
     }
     
     .qty-control { display: flex; align-items: center; gap: 10px; }

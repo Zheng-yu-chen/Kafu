@@ -51,7 +51,9 @@ if (!empty($_SESSION['tray'])) {
             $row['quantity'] = $qty; 
             $row['display_cal'] = $item_total_cal; 
             $row['display_pro'] = $item_total_pro; 
-            
+            $row['display_fat'] = $item_total_fat;    
+            $row['display_carbs'] = $item_total_carbs;
+    
             $tray_items[] = $row;
         }
     }
@@ -107,9 +109,6 @@ $item_count = count($tray_items);
     .macro-item { text-align: center; }
     .macro-label { display: block; font-size: 11px; color: #888; margin-bottom: 2px; }
     .macro-val { font-size: 14px; font-weight: bold; color: #333; }
-    .macro-pro { color: #1976d2; } /* 蛋白質藍色 */
-    .macro-fat { color: #fbc02d; } /* 脂肪黃色 */
-    .macro-carbs { color: #388e3c; } /* 碳水綠色 */
 
     .action-section { padding: 0 20px 100px; } 
     .btn-settle { background: #4CAF50; color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(76,175,80,0.3); }
@@ -140,7 +139,11 @@ $item_count = count($tray_items);
                 <div style="display: flex; align-items: center;">
                     <div class="item-stats">
                         <div class="cal-val"><?php echo $row['display_cal']; ?> kcal</div>
-                        <div class="pro-val">蛋白質 <?php echo number_format($row['display_pro'], 1); ?>g</div>
+                        <div class="pro-val">
+                            蛋白質 <?php echo number_format($row['display_pro'], 1); ?>g / 
+                            脂防 <?php echo number_format($row['display_fat'], 1); ?>g / 
+                            碳水 <?php echo number_format($row['display_carbs'], 1); ?>g
+                        </div>
                     </div>
                     <button class="btn-remove" onclick="deleteItem(<?php echo $row['session_index']; ?>)">×</button>
                 </div>
