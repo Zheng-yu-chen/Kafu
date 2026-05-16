@@ -10,10 +10,12 @@ if ($action === 'update') {
     $price = $_POST['price'];
     $cal = $_POST['calories'];
     $pro = $_POST['protein'];
+    $fat = isset($_POST['fat']) ? $_POST['fat'] : 0;
+    $carbs = isset($_POST['carbs']) ? $_POST['carbs'] : 0;
 
-    // 注意：欄位名稱必須與你資料庫 items 表一致 (你的資料庫欄位是 name, price, calories, protein)
-    $stmt = $conn->prepare("UPDATE items SET name=?, price=?, calories=?, protein=? WHERE item_id=?");
-    $stmt->bind_param("sdddi", $name, $price, $cal, $pro, $id);
+    // 更新欄位：name, price, calories, protein, fat, carbs
+    $stmt = $conn->prepare("UPDATE items SET name=?, price=?, calories=?, protein=?, fat=?, carbs=? WHERE item_id=?");
+    $stmt->bind_param("sdddddi", $name, $price, $cal, $pro, $fat, $carbs, $id);
     
     if ($stmt->execute()) echo json_encode(['success' => true]);
     else echo json_encode(['success' => false, 'error' => $conn->error]);

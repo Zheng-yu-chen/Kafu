@@ -29,6 +29,8 @@ $stmt_comments = $conn->prepare("
 $stmt_comments->bind_param("i", $r_id);
 $stmt_comments->execute();
 $comments_result = $stmt_comments->get_result();
+
+$is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 ?>
 
 <style>
@@ -154,6 +156,29 @@ $comments_result = $stmt_comments->get_result();
         box-shadow: 0 2px 5px rgba(0,0,0,0.02);
     }
 
+    .comment-card-item { position: relative; }
+    .comment-delete-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(244,67,54,0.1);
+        color: #D32F2F;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: background 0.2s, transform 0.1s;
+    }
+    .comment-delete-btn:hover {
+        background: rgba(244,67,54,0.18);
+        transform: scale(1.03);
+    }
+
     .hidden { display: none !important; }
 </style>
 
@@ -191,7 +216,10 @@ $comments_result = $stmt_comments->get_result();
                      data-time="<?php echo strtotime($com['created_at']); ?>"
                      data-text="<?php echo htmlspecialchars(mb_strtolower($com['item_name'] . $com['content'])); ?>">
                     
-                    <div style="background:white; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0;">
+                    <div style="background:white; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; position: relative;">
+                        <?php if ($is_admin): ?>
+                            <button class="comment-delete-btn" onclick="deleteComment(<?php echo $com['com_id']; ?>, this)" title="刪除評論">🗑</button>
+                        <?php endif; ?>
                         <div class="user-tag">
                             <?php if (!empty($com['user_photo'])): ?>
                                 <img src="images/<?php echo htmlspecialchars($com['user_photo']); ?>" class="user-avatar" alt="頭像">
@@ -296,6 +324,31 @@ $comments_result = $stmt_comments->get_result();
         document.getElementById('imageModal').style.display = 'none';
         const toolbar = document.querySelector('footer') || document.querySelector('nav') || document.querySelector('.footer');
         if (toolbar) toolbar.style.display = 'flex';
+    }
+
+    function deleteComment(comId, button) {
+        if (!confirm('管理員確定要刪除此評論嗎？此操作無法復原。')) return;
+
+        const formData = new FormData();
+        formData.append('action', 'reject');
+        formData.append('com_id', comId);
+
+        fetch('manage_review_api.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = button.closest('.comment-card-item');
+                if (card) card.remove();
+            } else {
+                alert('刪除失敗，請稍後再試。');
+            }
+        })
+        .catch(() => {
+            alert('網路錯誤，無法刪除評論。');
+        });
     }
 </script>
 

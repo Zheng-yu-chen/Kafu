@@ -134,6 +134,11 @@ $result = $conn->query($sql);
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
     .add-btn:active { transform: scale(0.95); }
 
+    /* admin_dashboard 的編輯/刪除按鈕樣式，與菜單維護頁一致 */
+    .action-icons { display: flex; flex-direction: column; gap: 5px; }
+    .btn-edit { background: #002B5B; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    .btn-delete { background: #F44336; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+
     /* ================= 彈出視窗專屬樣式 ================= */
     .modal-overlay {
         display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -246,35 +251,34 @@ $result = $conn->query($sql);
     <?php if ($result && $result->num_rows > 0): ?>
         <?php while($row = $result->fetch_assoc()): ?>
             <?php 
-                // 原有的權限判斷
-                $show_add_btn = true; 
-                if (isset($_SESSION['role_id']) && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)) {
-                    $show_add_btn = false; 
-                }
+                // 權限判斷：管理員(1) / 店家(2) 顯示編輯刪除；使用者(3) 顯示收藏與加入托盤
+                $is_admin_or_owner = isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1,2]);
+                $is_user = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3;
 
-                // 🎯 新增：從資料庫檢查「這筆餐點」是否已被「這個使用者」收藏
+                $show_add_btn = !$is_admin_or_owner; 
+
+                // 只有使用者才檢查收藏狀態
                 $is_fav = false;
-                if (isset($_SESSION['u_id'])) {
+                if ($is_user && isset($_SESSION['u_id'])) {
                     $u_id = $_SESSION['u_id'];
                     $item_id = $row['item_id'];
-                    
-                    // 查詢 favorites 資料表
                     $fav_check_sql = "SELECT 1 FROM favorites WHERE u_id = $u_id AND item_id = $item_id";
                     $fav_check_res = $conn->query($fav_check_sql);
-                    
                     if ($fav_check_res && $fav_check_res->num_rows > 0) {
-                        $is_fav = true; // 查到資料，代表已收藏
+                        $is_fav = true;
                     }
                 }
             ?>
-            <div class="item-card" style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <div class="item-card" data-item-id="<?php echo $row['item_id']; ?>" data-item-name="<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>" data-price="<?php echo floatval($row['price']); ?>" data-calories="<?php echo htmlspecialchars($row['calories']); ?>" data-protein="<?php echo htmlspecialchars($row['protein']); ?>" data-fat="<?php echo htmlspecialchars($row['fat']); ?>" data-carbs="<?php echo htmlspecialchars($row['carbs']); ?>" style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                 
                 <div class="item-info" style="display: flex; align-items: flex-start; gap: 12px; flex: 1;">
-                    <button class="favorite-btn <?php echo $is_fav ? 'active' : ''; ?>" 
-        onclick="toggleFavorite(this, <?php echo $row['item_id']; ?>)" 
-        style="background: none; border: none; cursor: pointer; padding: 0; font-size: 20px; line-height: 1; margin-top: 2px; flex-shrink: 0;">
-    <?php echo $is_fav ? '❤️' : '🤍'; ?>
-</button>
+                    <?php if ($is_user): ?>
+                        <button class="favorite-btn <?php echo $is_fav ? 'active' : ''; ?>" 
+                            onclick="toggleFavorite(this, <?php echo $row['item_id']; ?>)" 
+                            style="background: none; border: none; cursor: pointer; padding: 0; font-size: 20px; line-height: 1; margin-top: 2px; flex-shrink: 0;">
+                            <?php echo $is_fav ? '❤️' : '🤍'; ?>
+                        </button>
+                    <?php endif; ?>
 
                     <div style="flex: 1;">
                         <h4 class="item-name" style="margin: 0; font-size: 16px; color: var(--fujen-blue, #002B5B);"><?php echo htmlspecialchars($row['name']); ?></h4>
@@ -295,9 +299,15 @@ $result = $conn->query($sql);
                 <?php if ($show_add_btn): ?>
                     <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name']); ?>')" 
                             style="margin-left: 15px; flex-shrink: 0;">+</button>
+                <?php elseif ($is_admin_or_owner): ?>
+                    <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
+                        <button class="btn-edit" onclick="openEditModal(<?php echo $row['item_id']; ?>)">編輯</button>
+                        <button class="btn-delete" onclick="deleteItem(<?php echo $row['item_id']; ?>)">刪除</button>
+                    </div>
                 <?php endif; ?>
 
-            </div>  <?php endwhile; ?>
+            </div>
+        <?php endwhile; ?>
     <?php else: ?>
         <div style="text-align: center; padding: 50px; color: #999;">
             <div style="font-size: 30px; margin-bottom: 10px;">🥗</div>
@@ -415,7 +425,6 @@ function showToast(message) {
 }
 
 function toggleFavorite(btn, itemId) {
-    // 取得目前是否為「已收藏」狀態 (根據 class 或文字)
     const isCurrentlyFav = btn.classList.contains('active') || btn.innerText.trim() === '❤️';
 
     const formData = new FormData();
@@ -428,7 +437,6 @@ function toggleFavorite(btn, itemId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 這裡根據 save_favorite.php 回傳的 status 決定最終顏色
             if (data.status === 'added') {
                 btn.innerText = '❤️';
                 btn.classList.add('active');
@@ -447,6 +455,123 @@ function toggleFavorite(btn, itemId) {
         alert('網路連線有誤，請稍後再試');
     });
 }
+
+// 編輯彈窗相關
+function openEditModal(itemId) {
+    const card = document.querySelector('.item-card[data-item-id="' + itemId + '"]');
+    if (!card) return;
+    document.getElementById('editItemId').value = itemId;
+    document.getElementById('editName').value = card.getAttribute('data-item-name') || '';
+    document.getElementById('editPrice').value = card.getAttribute('data-price') || '';
+    document.getElementById('editCalories').value = card.getAttribute('data-calories') || '';
+    document.getElementById('editProtein').value = card.getAttribute('data-protein') || '';
+    document.getElementById('editFat').value = card.getAttribute('data-fat') || '';
+    document.getElementById('editCarbs').value = card.getAttribute('data-carbs') || '';
+    document.getElementById('editModal').style.display = 'flex';
+}
+function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+
+function saveEdit() {
+    const id = document.getElementById('editItemId').value;
+    const name = document.getElementById('editName').value;
+    const price = document.getElementById('editPrice').value;
+    const calories = document.getElementById('editCalories').value;
+    const protein = document.getElementById('editProtein').value;
+    const fat = document.getElementById('editFat').value;
+    const carbs = document.getElementById('editCarbs').value;
+
+    const data = new FormData();
+    data.append('action', 'update');
+    data.append('item_id', id);
+    data.append('name', name);
+    data.append('price', price);
+    data.append('calories', calories);
+    data.append('protein', protein);
+    data.append('fat', fat);
+    data.append('carbs', carbs);
+
+    fetch('manage_menu_api.php', {
+        method: 'POST',
+        body: data
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.success) {
+            location.reload();
+        } else {
+            alert('更新失敗：' + (resp.error || '伺服器回應錯誤'));
+        }
+    })
+    .catch(err => { console.error(err); alert('網路錯誤'); });
+}
+
+function deleteItem(itemId) {
+    if (!confirm('確定要刪除此餐點？此操作無法回復。')) return;
+    const data = new FormData();
+    data.append('action', 'delete');
+    data.append('item_id', itemId);
+
+    fetch('manage_menu_api.php', {
+        method: 'POST',
+        body: data
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.success) {
+            location.reload();
+        } else {
+            alert('刪除失敗');
+        }
+    })
+    .catch(err => { console.error(err); alert('網路錯誤'); });
+}
 </script>
+
+<!-- 編輯餐點 Modal -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h2>編輯餐點</h2>
+                <p id="editModalItem">調整價格與營養資訊</p>
+            </div>
+            <button class="close-btn" onclick="closeEditModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editItemId" value="">
+            <div class="form-group">
+                <label>名稱</label>
+                <input id="editName" class="date-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+        <div class="form-group">
+            <label>價格</label>
+            <input id="editPrice" type="number" step="0.01" class="date-input" style="width: 100%; box-sizing: border-box;" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>熱量 (kcal)</label>
+                <input id="editCalories" type="number" class="date-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>蛋白質 (g)</label>
+                <input id="editProtein" type="number" class="date-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>脂肪 (g)</label>
+                <input id="editFat" type="number" class="date-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>碳水 (g)</label>
+                <input id="editCarbs" type="number" class="date-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button class="submit-tray-btn" onclick="saveEdit()" type="button" style="width: 100%; box-sizing: border-box;">儲存</button>
+        </div>
+    </div>
+</div>
+
 </div> <div id="toast-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100000;"></div>
 <?php include('footer.php'); ?>
