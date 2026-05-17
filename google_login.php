@@ -110,7 +110,7 @@ if (isset($_GET['code'])) {
             $_SESSION['name'] = $user['name'];
             $_SESSION['role_id'] = $user['role_id'];
             
-            header("Location: index.php");
+            header("Location: profile.php");
             exit();
         } else {
             // 👉 新用戶：自動註冊
