@@ -37,6 +37,37 @@ while ($row = $result->fetch_assoc()) {
     $date = date('Y-m-d', strtotime($row['recorded_at']));
     $logs_by_date[$date][] = $row;
 }
+
+$date_summaries = [];
+foreach ($logs_by_date as $date => $items) {
+    $day_cal = 0;
+    $day_pro = 0;
+    $day_price = 0;
+    $day_fat = 0;
+    $day_carbs = 0;
+    foreach ($items as $log) {
+        $day_cal += $log['total_calories'];
+        $day_pro += $log['final_protein'] ?? 0;
+        $day_price += $log['final_price'];
+        $day_fat += $log['final_fat'] ?? 0;
+        $day_carbs += $log['final_carbs'] ?? 0;
+    }
+    $percent = ($goal_cal > 0) ? min(100, round(($day_cal / $goal_cal) * 100)) : 0;
+    $date_summaries[$date] = [
+        'total_cal' => $day_cal,
+        'total_pro' => $day_pro,
+        'total_price' => $day_price,
+        'total_fat' => $day_fat,
+        'total_carbs' => $day_carbs,
+        'percent' => $percent,
+        'items' => count($items),
+    ];
+}
+
+$selected_date = date('Y-m-d');
+if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
+    $selected_date = array_key_first($logs_by_date);
+}
 ?>
 
 <style>
@@ -46,6 +77,60 @@ while ($row = $result->fetch_assoc()) {
     .header-title { display: flex; justify-content: space-between; align-items: center; }
     .header-title h2 { margin: 0; font-size: 24px; color: white; }
     .btn-manual { background: #FF8C42; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+    .history-container { padding: 20px; max-width: 900px; margin: auto; }
+    .calendar-card { background: white; border-radius: 22px; padding: 8px; box-shadow: 0 3px 20px rgba(0,0,0,0.08); margin-bottom: 10px; }
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .calendar-title { font-size: 20px; font-weight: 700; color: #002B5B; }
+    .calendar-nav button { background: #002B5B; color: white; border: none; border-radius: 12px; font-size: 14px; padding: 8px 14px; cursor: pointer; margin-left: 8px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+    .calendar-weekday, .calendar-day { text-align: center; font-size: 11px; }
+    .calendar-weekday { color: #777; font-weight: 700; }
+    /* 更緊湊的日期方塊，避免長條狀 */
+    .calendar-day { background: transparent; border-radius: 12px; min-height: 36px; padding: 2px 2px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; cursor: pointer; transition: transform .1s, box-shadow .1s; }
+    .calendar-day:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
+    .calendar-day.inactive { visibility: hidden; pointer-events: none; }
+    /* 不要整格橘色框，只靠小點提示有紀錄 */
+    .calendar-day.has-entry { border: none; }
+    /* 選取時把數字包成圓形深色標記，不要整格變色 */
+    .calendar-day.selected { background: transparent; box-shadow: 0 6px 14px rgba(0,0,0,0.06); }
+    .calendar-day .day-number { font-size: 13px; font-weight: 800; color: #222; display: block; margin-top: 2px; }
+    .calendar-day.selected .day-number { background: #002B5B; color: #fff; width: 28px; height: 28px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; margin: 2px auto 2px; }
+    .calendar-day .entry-dot { width: 6px; height: 6px; border-radius: 999px; background: #FF8C42; margin: 2px auto 0; }
+    .history-card { background: white; border-radius: 18px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .history-summary-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .history-summary-row h3 { margin: 0; font-size: 20px; color: #002B5B; }
+    .history-summary-row p { margin: 0; color: #666; }
+    .summary-main-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .total-price { font-size: 18px; font-weight: bold; color: #E53935; }
+    .total-cal { color: var(--primary-orange, #FF8C42); font-size: 24px; font-weight: 900; line-height: 1; }
+    .total-cal small { font-size: 12px; font-weight: normal; margin-left: 4px; color: #fff; opacity: 0.9; }
+    .progress-mini { width: 100%; height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; background: rgba(255,255,255,0.92); }
+    .summary-macro-row { display: flex; justify-content: space-between; background: #f9f9f9; padding: 14px 0; border-radius: 10px; margin-top: 16px; }
+    .macro-item { text-align: center; flex: 1; }
+    .macro-label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; }
+    .macro-val { font-size: 14px; font-weight: bold; color: #333; }
+    .macro-pro, .macro-fat, .macro-carbs { color: #4CAF50; }
+    .history-items { display: grid; gap: 14px; }
+    .item-card { background: #ffffff; border-radius: 16px; padding: 18px; border: 1px solid #f2f2f2; }
+    .item-card h4 { margin: 0 0 8px; font-size: 16px; color: #002B5B; }
+    .item-meta { color: #777; font-size: 13px; margin-bottom: 12px; }
+    .item-macros { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; margin-bottom: 10px; }
+    .item-macros span { background: #f5f9f6; border-radius: 999px; padding: 6px 10px; color: #4CAF50; }
+    .item-stats { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .item-price { font-weight: bold; color: #E53935; }
+    .item-calories { font-weight: bold; color: var(--primary-orange, #FF8C42); }
+    .item-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-edit, .btn-delete { background: white; border: 1px solid #ddd; font-size: 12px; cursor: pointer; padding: 8px 12px; border-radius: 10px; font-weight: bold; transition: 0.2s; }
+    .btn-edit { color: #2196F3; border-color: #bbdefb; }
+    .btn-edit:hover { background: #e3f2fd; }
+    .btn-delete { color: #f44336; border-color: #ffcdd2; }
+    .btn-delete:hover { background: #ffebee; }
+    @media (max-width: 720px) {
+        .history-container { padding: 16px; }
+        .calendar-grid { gap: 5px; }
+        .calendar-day { min-height: 34px; padding: 2px 2px; }
+    }
     
     .history-container { padding: 20px; max-width: 500px; margin: auto; }
     .date-label { font-weight: bold; color: #555; margin: 25px 0 10px; display: flex; justify-content: space-between; align-items: flex-end; }
@@ -110,97 +195,55 @@ while ($row = $result->fetch_assoc()) {
 </div>
 
 <div class="history-container">
-    <?php foreach ($logs_by_date as $date => $items): 
-        // 計算每日的各項總和
-        $day_cal = 0;
-        $day_pro = 0;
-        $day_price = 0;
-        $day_fat = 0;
-        $day_carbs = 0;
-        
-        foreach ($items as $log) {
-            $day_cal += $log['total_calories'];
-            $day_pro += $log['final_protein'] ?? 0;
-            $day_price += $log['final_price']; // 改用 final_price
-            $day_fat += $log['final_fat'] ?? 0;
-            $day_carbs += $log['final_carbs'] ?? 0;
-        }
-        $percent = ($goal_cal > 0) ? min(100, round(($day_cal / $goal_cal) * 100)) : 0;
-    ?>
-    <div class="date-label">
-        <span style="font-size: 16px;"><?php echo ($date == date('Y-m-d')) ? "今天" : $date; ?></span>
-    </div>
-    
-    <div class="history-card">
-        <!-- 日期總計區塊 -->
-        <div style="border-bottom: 2px dashed #eee; padding-bottom: 12px; margin-bottom: 10px;">
-            <div class="summary-main-row">
-                <div class="total-price">$<?php echo floatval($day_price); ?></div>
-                <div class="total-cal">🔥 <?php echo $day_cal; ?> <small>/ <?php echo $goal_cal; ?> kcal</small></div>
+    <div class="calendar-card">
+        <div class="calendar-header">
+            <div class="calendar-title" id="calendarTitle"></div>
+            <div class="calendar-nav">
+                <button type="button" onclick="changeCalendarMonth(-1)">上一月</button>
+                <button type="button" onclick="changeCalendarMonth(1)">下一月</button>
             </div>
-            <div class="progress-mini"><div class="progress-fill" style="width: <?php echo $percent; ?>%;"></div></div>
-            <div class="summary-macro-row">
-                <div class="macro-item macro-pro">
-                    <span class="macro-label">蛋白質</span>
-                    <span class="macro-val"><?php echo number_format($day_pro, 1); ?> g</span>
-                </div>
-                <div class="macro-item macro-fat">
-                    <span class="macro-label">脂肪</span>
-                    <span class="macro-val"><?php echo number_format($day_fat, 1); ?> g</span>
-                </div>
-                <div class="macro-item macro-carbs">
-                    <span class="macro-label">碳水</span>
-                    <span class="macro-val"><?php echo number_format($day_carbs, 1); ?> g</span>
-                </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid">
+            <div class="calendar-weekday">日</div>
+            <div class="calendar-weekday">一</div>
+            <div class="calendar-weekday">二</div>
+            <div class="calendar-weekday">三</div>
+            <div class="calendar-weekday">四</div>
+            <div class="calendar-weekday">五</div>
+            <div class="calendar-weekday">六</div>
+        </div>
+    </div>
+
+    <div class="history-card" id="selectedDayCard">
+        <div class="history-summary-row">
+            <div>
+                <h3 id="selectedDayTitle"></h3>
+                <p id="selectedDaySubtitle"></p>
             </div>
         </div>
 
-        <!-- 個別紀錄列表 (加入全品項營養素) -->
-        <?php foreach ($items as $log): 
-            $display_name = $log['item_id'] ? $log['item_name'] : $log['manual_item_name'];
-        ?>
-        <div class="log-row">
-            <div class="item-detail">
-                <div class="item-title"><?php echo htmlspecialchars($display_name); ?></div>
-                <div class="item-info">
-                    <?php echo date('H:i', strtotime($log['recorded_at'])); ?> • 
-                    <?php $meals = [1=>'早餐', 2=>'午餐', 3=>'晚餐', 4=>'點心']; echo $meals[$log['daily_meal']] ?? '其他'; ?>
-                </div>
-                
-                <!-- 單項餐點的營養素並排 -->
-                <div class="item-macros">
-                    <span style="color:#4CAF50;">蛋白質 <?php echo number_format($log['final_protein'] ?? 0, 1); ?>g</span>
-                    <span style="color:#4CAF50;">脂肪 <?php echo number_format($log['final_fat'] ?? 0, 1); ?>g</span>
-                    <span style="color:#4CAF50;">碳水 <?php echo number_format($log['final_carbs'] ?? 0, 1); ?>g</span>
-                </div>
-                
-                <!-- 單項餐點的價格與熱量並排 -->
-                <div class="item-stats">
-                    <span class="item-price">$<?php echo floatval($log['final_price']); ?></span></span>
-                    <span class="item-calories">🔥 <?php echo (int)$log['total_calories']; ?> <small style="font-size: 12px;">kcal</small></span>
-                </div>
+        <div class="summary-main-row">
+            <div class="total-price" id="selectedTotalPrice"></div>
+            <div class="total-cal" id="selectedTotalCal"></div>
+        </div>
+        <div class="progress-mini"><div class="progress-fill" id="selectedProgress"></div></div>
+        <div class="summary-macro-row">
+            <div class="macro-item macro-pro">
+                <span class="macro-label">蛋白質</span>
+                <span class="macro-val" id="selectedTotalPro"></span>
             </div>
-
-            <!-- 編輯/刪除按鈕 -->
-            <div class="action-icons">
-                <!-- 💡 點擊編輯按鈕時，把脂肪和碳水的值也傳遞過去 -->
-                <button class="btn-edit" onclick="openEditModal(
-                    <?php echo $log['log_id']; ?>, 
-                    '<?php echo htmlspecialchars($display_name); ?>', 
-                    '<?php echo $date; ?>', 
-                    <?php echo $log['daily_meal']; ?>,
-                    <?php echo $log['total_calories']; ?>,
-                    <?php echo $log['total_protein']; ?>,
-                    <?php echo $log['fat'] ?? 0; ?>,
-                    <?php echo $log['carbs'] ?? 0; ?>,
-                    <?php echo $log['final_price']; ?>
-                )">編輯</button>
-                <button class="btn-delete" onclick="deleteLog(<?php echo $log['log_id']; ?>)">刪除</button>
+            <div class="macro-item macro-fat">
+                <span class="macro-label">脂肪</span>
+                <span class="macro-val" id="selectedTotalFat"></span>
+            </div>
+            <div class="macro-item macro-carbs">
+                <span class="macro-label">碳水</span>
+                <span class="macro-val" id="selectedTotalCarbs"></span>
             </div>
         </div>
-        <?php endforeach; ?>
+
+        <div class="history-items" id="historyItems"></div>
     </div>
-    <?php endforeach; ?>
 </div>
 
 <!-- ================= 💡 新增校外食物彈窗 (擴充版) ================= -->
@@ -293,7 +336,7 @@ while ($row = $result->fetch_assoc()) {
     function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
     
     // 💡 接收脂肪和碳水參數，並填入輸入框
-    function openEditModal(logId, name, date, meal, cal, pro, fat, carbs,price) {
+    function openEditModal(logId, name, date, meal, cal, pro, fat, carbs, price) {
         document.getElementById('edit_log_id').value = logId;
         document.getElementById('edit_food_name').value = name;
         document.getElementById('edit_eat_date').value = date;
@@ -302,17 +345,232 @@ while ($row = $result->fetch_assoc()) {
         document.getElementById('edit_fat').value = fat;
         document.getElementById('edit_carbs').value = carbs;
 
-        // 💡 確保這裡能正確填入價格
-    if (document.getElementById('edit_price')) {
-        document.getElementById('edit_price').value = price;
-    }
+        if (document.getElementById('edit_price')) {
+            document.getElementById('edit_price').value = price;
+        }
         if (document.getElementById('edit_meal_' + meal)) {
             document.getElementById('edit_meal_' + meal).checked = true;
         }
-        
+
         document.getElementById('editModal').style.display = 'flex';
     }
     function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+
+    const logSummaries = <?php echo json_encode($date_summaries); ?>;
+    const logsByDate = <?php echo json_encode($logs_by_date); ?>;
+    const goalCal = <?php echo json_encode((int)$goal_cal); ?>;
+    let currentYear = <?php echo (int)date('Y', strtotime($selected_date)); ?>;
+    let currentMonth = <?php echo (int)date('n', strtotime($selected_date)); ?>;
+    let selectedDate = '<?php echo $selected_date; ?>';
+
+    function formatChineseDate(dateString) {
+        const parts = dateString.split('-');
+        return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+    }
+
+    function pad(value) {
+        return value.toString().padStart(2, '0');
+    }
+
+    function changeCalendarMonth(offset) {
+        currentMonth += offset;
+        if (currentMonth < 1) {
+            currentMonth = 12;
+            currentYear -= 1;
+        } else if (currentMonth > 12) {
+            currentMonth = 1;
+            currentYear += 1;
+        }
+        renderCalendar(currentYear, currentMonth);
+        const monthDates = Object.keys(logSummaries).filter(d => {
+            const [y, m] = d.split('-').map(Number);
+            return y === currentYear && m === currentMonth;
+        }).sort();
+        if (monthDates.length > 0) {
+            selectDay(monthDates[0]);
+        } else {
+            selectedDate = null;
+            updateSelectedDay();
+        }
+    }
+
+    function renderCalendar(year, month) {
+        const calendarTitle = document.getElementById('calendarTitle');
+        const calendarGrid = document.getElementById('calendarGrid');
+        calendarTitle.textContent = `${year} 年 ${month} 月`;
+
+        const firstDay = new Date(year, month - 1, 1);
+        const firstWeekday = firstDay.getDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+
+        const cells = [];
+        for (let i = 0; i < firstWeekday; i += 1) {
+            cells.push({ empty: true });
+        }
+        for (let day = 1; day <= daysInMonth; day += 1) {
+            const dateKey = `${year}-${pad(month)}-${pad(day)}`;
+            const hasEntry = Boolean(logSummaries[dateKey]);
+            cells.push({ day, dateKey, hasEntry });
+        }
+        while (cells.length % 7 !== 0) {
+            cells.push({ empty: true });
+        }
+
+        const existingDays = Array.from(calendarGrid.querySelectorAll('.calendar-day'));
+        existingDays.forEach(node => node.remove());
+
+        cells.forEach(cell => {
+            const dayEl = document.createElement('div');
+            dayEl.className = 'calendar-day';
+            if (cell.empty) {
+                dayEl.classList.add('inactive');
+                calendarGrid.appendChild(dayEl);
+                return;
+            }
+            // 設定 data 屬性以方便之後比對
+            dayEl.dataset.dateKey = cell.dateKey;
+            if (cell.hasEntry) {
+                dayEl.classList.add('has-entry');
+            }
+            if (cell.dateKey === selectedDate) {
+                dayEl.classList.add('selected');
+            }
+
+            const numberEl = document.createElement('div');
+            numberEl.className = 'day-number';
+            numberEl.textContent = cell.day;
+            dayEl.appendChild(numberEl);
+
+            if (cell.hasEntry) {
+                const dotEl = document.createElement('div');
+                dotEl.className = 'entry-dot';
+                dayEl.appendChild(dotEl);
+            }
+
+            // 允許點擊選取所有非空日期 (不再僅限有紀錄的日期)
+            dayEl.style.cursor = 'pointer';
+            dayEl.addEventListener('click', () => selectDay(cell.dateKey));
+
+            calendarGrid.appendChild(dayEl);
+        });
+    }
+
+    function selectDay(dateKey) {
+        selectedDate = dateKey;
+        const calendarCells = Array.from(document.querySelectorAll('.calendar-day'));
+        calendarCells.forEach(cell => {
+            if (cell.dataset.dateKey === dateKey) {
+                cell.classList.add('selected');
+            } else {
+                cell.classList.remove('selected');
+            }
+        });
+        updateSelectedDay(dateKey);
+    }
+
+    function updateSelectedDay(dateKey = selectedDate) {
+        const selectedDayTitle = document.getElementById('selectedDayTitle');
+        const selectedDaySubtitle = document.getElementById('selectedDaySubtitle');
+        const selectedTotalPrice = document.getElementById('selectedTotalPrice');
+        const selectedTotalCal = document.getElementById('selectedTotalCal');
+        const selectedTotalPro = document.getElementById('selectedTotalPro');
+        const selectedTotalFat = document.getElementById('selectedTotalFat');
+        const selectedTotalCarbs = document.getElementById('selectedTotalCarbs');
+        const selectedProgress = document.getElementById('selectedProgress');
+        const historyItems = document.getElementById('historyItems');
+
+        if (!dateKey || !logsByDate[dateKey]) {
+            selectedDayTitle.textContent = '尚未選擇有紀錄的日期';
+            selectedDaySubtitle.textContent = '請點擊有記錄的日期。';
+            selectedTotalPrice.textContent = '$0';
+            selectedTotalCal.textContent = '🔥 0 / ' + goalCal + ' kcal';
+            selectedTotalPro.textContent = '0 g';
+            selectedTotalFat.textContent = '0 g';
+            selectedTotalCarbs.textContent = '0 g';
+            selectedProgress.style.width = '0%';
+            historyItems.innerHTML = '<div class="item-card"><p style="color:#666; margin:0;">此日尚無飲食紀錄。</p></div>';
+            return;
+        }
+
+        const summary = logSummaries[dateKey];
+        selectedDayTitle.textContent = formatChineseDate(dateKey);
+        selectedDaySubtitle.textContent = `共 ${summary.items} 筆紀錄，已達 ${summary.percent}%`; 
+        selectedTotalPrice.textContent = '$' + parseFloat(summary.total_price).toFixed(0);
+        selectedTotalCal.textContent = `🔥 ${summary.total_cal} / ${goalCal} kcal`;
+        selectedTotalPro.textContent = parseFloat(summary.total_pro).toFixed(1) + ' g';
+        selectedTotalFat.textContent = parseFloat(summary.total_fat).toFixed(1) + ' g';
+        selectedTotalCarbs.textContent = parseFloat(summary.total_carbs).toFixed(1) + ' g';
+        selectedProgress.style.width = summary.percent + '%';
+
+        historyItems.innerHTML = '';
+        logsByDate[dateKey].forEach(log => {
+            const itemName = log.item_id ? log.item_name : log.manual_item_name;
+            const itemCard = document.createElement('div');
+            itemCard.className = 'item-card';
+
+            const titleEl = document.createElement('h4');
+            titleEl.textContent = itemName;
+            itemCard.appendChild(titleEl);
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'item-meta';
+            const mealLabel = {1:'早餐',2:'午餐',3:'晚餐',4:'點心'}[log.daily_meal] || '其他';
+            metaEl.textContent = `${new Date(log.recorded_at).toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})} • ${mealLabel}`;
+            itemCard.appendChild(metaEl);
+
+            const macrosEl = document.createElement('div');
+            macrosEl.className = 'item-macros';
+            ['final_protein','final_fat','final_carbs'].forEach(key => {
+                const span = document.createElement('span');
+                const label = key === 'final_protein' ? '蛋白質' : (key === 'final_fat' ? '脂肪' : '碳水');
+                span.textContent = `${label} ${parseFloat(log[key] || 0).toFixed(1)}g`;
+                macrosEl.appendChild(span);
+            });
+            itemCard.appendChild(macrosEl);
+
+            const statsEl = document.createElement('div');
+            statsEl.className = 'item-stats';
+            const priceEl = document.createElement('div');
+            priceEl.className = 'item-price';
+            priceEl.textContent = '$' + parseFloat(log.final_price || 0).toFixed(0);
+            const caloriesEl = document.createElement('div');
+            caloriesEl.className = 'item-calories';
+            caloriesEl.textContent = `🔥 ${parseInt(log.total_calories || 0, 10)} kcal`;
+            statsEl.appendChild(priceEl);
+            statsEl.appendChild(caloriesEl);
+            itemCard.appendChild(statsEl);
+
+            const actionsEl = document.createElement('div');
+            actionsEl.className = 'item-actions';
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn-edit';
+            editBtn.type = 'button';
+            editBtn.textContent = '編輯';
+            editBtn.addEventListener('click', () => {
+                openEditModal(
+                    log.log_id,
+                    itemName,
+                    dateKey,
+                    log.daily_meal,
+                    log.total_calories,
+                    log.total_protein,
+                    log.fat || 0,
+                    log.carbs || 0,
+                    log.final_price || 0
+                );
+            });
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-delete';
+            deleteBtn.type = 'button';
+            deleteBtn.textContent = '刪除';
+            deleteBtn.addEventListener('click', () => deleteLog(log.log_id));
+            actionsEl.appendChild(editBtn);
+            actionsEl.appendChild(deleteBtn);
+            itemCard.appendChild(actionsEl);
+
+            historyItems.appendChild(itemCard);
+        });
+    }
 
     window.onclick = function(event) {
         if (event.target.className === 'modal-overlay') {
@@ -320,6 +578,11 @@ while ($row = $result->fetch_assoc()) {
             closeEditModal();
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderCalendar(currentYear, currentMonth);
+        updateSelectedDay(selectedDate);
+    });
 </script>
 
 <?php include('footer.php'); ?>

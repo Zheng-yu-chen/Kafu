@@ -10,10 +10,9 @@ $is_logged_in = ($u_id !== null);
 // 預設變數初始化
 $user_name = "訪客模式"; 
 $user_account = "尚未登入"; 
-$user_photo = null; // 💡 新增：用來儲存資料庫撈出來的頭像檔名或路徑
+$user_photo = null; 
 $display_cal = 0; 
 $display_pro = 0;
-// 💡 新增：價格、脂肪、碳水的變數
 $display_price = 0;
 $display_fat = 0;
 $display_carbs = 0;
@@ -30,17 +29,17 @@ if ($is_logged_in) {
         $user_name = $row['name'] ?: "同學您好";
         $user_account = $row['accounts'];
         $goal_cal = $row['goal_cal'] ?: 2000;
-        $user_photo = $row['user_photo']; // 💡 讀取頭像欄位
+        $user_photo = $row['user_photo']; 
     }
 
-    // B. 💡 抓取今日進度：修改 SQL，一併加總 price, fat, carbs
+    // B. 抓取今日進度：一併加總 price, fat, carbs
     $today = date('Y-m-d');
     $sql_stats = "SELECT 
                    SUM(COALESCE(i.calories, l.total_calories)) as total_cal, 
                     SUM(COALESCE(i.protein, l.total_protein)) as total_pro,
-                    SUM(CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END) as total_price, -- 👈 優先抓自訂價格，再抓學餐價格
-                    SUM(COALESCE(NULLIF(l.total_fat, 0), i.fat, 0)) as total_fat, -- 👈 用 NULLIF 把 0 轉 NULL，優先抓自訂脂肪
-                    SUM(COALESCE(NULLIF(l.total_carbs, 0), i.carbs, 0)) as total_carbs -- 👈 用 NULLIF 把 0 轉 NULL
+                    SUM(CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END) as total_price, 
+                    SUM(COALESCE(NULLIF(l.total_fat, 0), i.fat, 0)) as total_fat, 
+                    SUM(COALESCE(NULLIF(l.total_carbs, 0), i.carbs, 0)) as total_carbs
                   FROM consumptionlogs l 
                   LEFT JOIN items i ON l.item_id = i.item_id 
                   WHERE l.u_id = $u_id AND DATE(l.recorded_at) = '$today'";
@@ -54,7 +53,7 @@ if ($is_logged_in) {
         $display_carbs = (float)($stats['total_carbs'] ?? 0);
     }
 
-    // C. 抓取過去 7 天趨勢 (包含學餐與手動輸入)
+    // C. 抓取過去 7 天趨勢
     $sql_trend = "SELECT 
                     DATE(l.recorded_at) as log_date, 
                     SUM(IFNULL(i.calories, l.total_calories)) as daily_cal 
@@ -66,7 +65,6 @@ if ($is_logged_in) {
 
     $trend_result = $conn->query($sql_trend);
 
-    // 初始化 7 天陣列，確保圖表連續
     $trend_map = [];
     for ($i = 6; $i >= 0; $i--) {
         $d = date('Y-m-d', strtotime("-$i days"));
@@ -89,49 +87,35 @@ if ($is_logged_in) {
     body { background: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
     .profile-header { background-color: #002B5B; color: white; padding: 60px 20px 80px; display: flex; align-items: center; gap: 15px; position: relative; }
 
-/* 頭像外框：維持乾淨的圓形對齊 */
-.avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; }
-.avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; }
+    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
 
-/* 使用者資訊區塊：改為垂直排列，並微調間距 */
-.user-info { display: flex; flex-direction: column; gap: 6px; }
-.user-info h2 { margin: 0; font-size: 20px; line-height: 1.2; }
-.user-info p { margin: 0; font-size: 13px; opacity: 0.8; }
+    .user-info { display: flex; flex-direction: column; gap: 6px; }
+    .user-info h2 { margin: 0; font-size: 20px; line-height: 1.2; }
+    .user-info p { margin: 0; font-size: 13px; opacity: 0.8; }
 
-/* 💡 姓名底下的點擊提示按鈕樣式 */
-.upload-hint { 
-    font-size: 11px; 
-    background: rgba(255, 255, 255, 0.15); 
-    padding: 3px 10px; 
-    border-radius: 12px; 
-    cursor: pointer; 
-    transition: 0.2s; 
-    align-self: flex-start; /* 讓按鈕寬度根據文字長度自適應，不會撐滿整行 */
-    display: inline-flex;
-    align-items: center;
-}
-
-/* 滑鼠懸停效果：亮起來 */
-.upload-hint:hover { 
-    background: rgba(255, 255, 255, 0.3); 
-    transform: scale(1.02); 
-}
+    .upload-hint { 
+        font-size: 11px; background: rgba(255, 255, 255, 0.15); padding: 3px 10px; 
+        border-radius: 12px; cursor: pointer; transition: 0.2s; align-self: flex-start; 
+        display: inline-flex; align-items: center;
+    }
+    .upload-hint:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.02); }
+    
     .stats-card-combined {
         background: white; border-radius: 15px; padding: 20px;
         margin: -40px 20px 20px; position: relative; z-index: 10; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
     
-    .progress-box { background: #e0e0e0; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 15px; }
-    .progress-fill { background: #4CAF50; height: 100%; transition: width 0.6s ease; }
+    .progress-box { background: #e0e0e0; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+    /* 💡 拔掉原本寫死的顏色，加入顏色漸變動畫 */
+    .progress-fill { height: 100%; transition: width 0.6s ease, background-color 0.6s ease; }
     
-    /* 💡 全新設計的總計排版：第一排 (價格與熱量) */
-    .summary-main-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; }
+    .summary-main-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
     .total-price { font-size: 20px; font-weight: bold; color: #E53935; } 
     .total-cal { color: var(--primary-orange, #FF8C42); font-size: 32px; font-weight: 900; line-height: 1; }
     .total-cal small { font-size: 14px; font-weight: normal; margin-left: 5px; color: #888; }
     
-    /* 💡 全新設計的總計排版：第二排 (三大營養素) */
     .summary-macro-row { display: flex; justify-content: space-between; background: #f5f5f5; padding: 12px 0; border-radius: 10px; margin-top: 15px; }
     .macro-item { text-align: center; flex: 1; }
     .macro-label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
@@ -196,18 +180,41 @@ if ($is_logged_in) {
     <?php if ($is_logged_in): ?>
         <h2 style="font-size: 16px; color: #333; margin: 0 0 12px 0;">今日攝取進度</h2>
         
-        <!-- 💡 價格與大字體熱量 -->
         <div class="summary-main-row">
             <div class="total-price">$<?php echo floatval($display_price); ?></div>
             <div class="total-cal">🔥<?php echo $display_cal; ?> <small>/ <?php echo $goal_cal; ?> kcal</small></div>
         </div>
 
-        <?php $percent = ($goal_cal > 0) ? min(($display_cal / $goal_cal) * 100, 100) : 0; ?>
+        <?php 
+        // 💡 1. 處理百分比、進度條顏色與剩餘熱量
+        $percentage = ($goal_cal > 0) ? round(($display_cal / $goal_cal) * 100) : 0;
+        $bar_width = ($percentage > 100) ? 100 : $percentage; // 最高不超過100%防破版
+        $remaining_cal = $goal_cal - $display_cal;
+
+        // 決定進度條顏色
+        if ($percentage < 80) {
+            $bar_color = "#4CAF50"; // 🟢 安全範圍 (綠色)
+        } elseif ($percentage <= 100) {
+            $bar_color = "#FF8C42"; // 🟠 快達標 (橘色)
+        } else {
+            $bar_color = "#E53935"; // 🔴 已超標 (紅色)
+        }
+        ?>
+
         <div class="progress-box">
-            <div class="progress-fill" style="width: <?php echo $percent; ?>%;"></div>
+            <div class="progress-fill" style="width: <?php echo $bar_width; ?>%; background-color: <?php echo $bar_color; ?>;"></div>
         </div>
         
-        <!-- 💡 三大營養素並排 -->
+        <div style="font-size: 13px; text-align: right; margin-bottom: 12px; color: <?php echo ($remaining_cal < 0) ? '#E53935' : '#666'; ?>;">
+            <?php if ($remaining_cal > 0): ?>
+                剩餘可攝取：<strong style="color: <?php echo $bar_color; ?>;"><?php echo $remaining_cal; ?> kcal</strong>
+            <?php elseif ($remaining_cal == 0): ?>
+                <strong>🎉 完美達標！</strong>
+            <?php else: ?>
+                已超標：<strong><?php echo abs($remaining_cal); ?> kcal</strong>
+            <?php endif; ?>
+        </div>
+
         <div class="summary-macro-row">
             <div class="macro-item macro-pro">
                 <span class="macro-label">蛋白質</span>
