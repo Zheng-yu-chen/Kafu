@@ -43,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             WHERE u_id = ?";
     
     $stmt = $conn->prepare($sql);
-    // 參數型態對應：s(name), i(goal_cal), i(gender), d(height), d(weight), i(activity_level), i(notify_meal), s(b_time), s(l_time), s(d_time), i(u_id) -> "siiiddisssi"
     $stmt->bind_param("siiiddisssi", $name, $goal_cal, $gender, $height, $weight, $activity_level, $notify_meal, $time_breakfast, $time_lunch, $time_dinner, $u_id);
     
     if($stmt->execute()) {
@@ -83,6 +82,11 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
         .label-main { font-size: 16px; color: #333; font-weight: 500; }
         .label-sub { font-size: 12px; color: #999; margin-top: 2px; }
         
+        /* 💡 狀態顏色樣式 */
+        .status-safe { color: #2ECC71; font-weight: bold; } /* 安全：綠字 */
+        .status-too-low { color: #3498DB; font-weight: bold; } /* 太低：藍字 */
+        .status-too-high { color: #E74C3C; font-weight: bold; } /* 太高：紅字 */
+
         .item-input, .item-select {
             box-sizing: border-box;
             border: 1px solid #ddd;
@@ -120,7 +124,7 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
         .save-btn { background-color: var(--fujen-blue, #002B5B); color: white; border: none; width: 100%; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,43,91,0.2); transition: 0.2s; }
         .save-btn:active { transform: scale(0.98); }
 
-        /* 💡 動態時間設定區塊：預設依通知狀態顯示或隱藏 */
+        /* 動態時間設定區塊 */
         .time-settings-block {
             display: <?php echo $user['notify_meal'] ? 'block' : 'none'; ?>;
             border-top: 1px solid #f2f2f2;
@@ -146,7 +150,7 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
     </div>
 
     <div class="settings-content">
-        <form action="settings.php" method="POST">
+        <form action="settings.php" method="POST" onsubmit="return validateGoalCal()">
             
             <div class="section-title">👤 個人身體檔案管理</div>
             <div class="settings-card">
@@ -163,7 +167,7 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
                         <span class="label-main">生理性別</span>
                         <span class="label-sub">用於更精準的代謝率計算</span>
                     </div>
-                    <select class="item-select" name="gender">
+                    <select class="item-select" name="gender" id="gender" onchange="calculateSuggestedCalories()">
                         <option value="">請選擇</option>
                         <option value="1" <?php if($user['gender'] == 1) echo 'selected'; ?>>男</option>
                         <option value="2" <?php if($user['gender'] == 2) echo 'selected'; ?>>女</option>
@@ -175,7 +179,7 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
                         <span class="label-main">身高 (cm)</span>
                         <span class="label-sub">請輸入您的身高</span>
                     </div>
-                    <input type="number" step="0.1" class="item-input" name="height" placeholder="例如: 170.5" value="<?php echo $user['height'] ? htmlspecialchars($user['height']) : ''; ?>">
+                    <input type="number" step="0.1" class="item-input" name="height" id="height" placeholder="例如: 170.5" value="<?php echo $user['height'] ? htmlspecialchars($user['height']) : ''; ?>" oninput="calculateSuggestedCalories()">
                 </div>
 
                 <div class="setting-item">
@@ -183,7 +187,7 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
                         <span class="label-main">體重 (kg)</span>
                         <span class="label-sub">請輸入當前體重數據</span>
                     </div>
-                    <input type="number" step="0.1" class="item-input" name="weight" placeholder="例如: 62.3" value="<?php echo $user['weight'] ? htmlspecialchars($user['weight']) : ''; ?>">
+                    <input type="number" step="0.1" class="item-input" name="weight" id="weight" placeholder="例如: 62.3" value="<?php echo $user['weight'] ? htmlspecialchars($user['weight']) : ''; ?>" oninput="calculateSuggestedCalories()">
                 </div>
 
                 <div class="setting-item">
@@ -191,7 +195,7 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
                         <span class="label-main">日常活動量</span>
                         <span class="label-sub">根據日常作息型態選擇</span>
                     </div>
-                    <select class="item-select" name="activity_level">
+                    <select class="item-select" name="activity_level" id="activity_level" onchange="calculateSuggestedCalories()">
                         <option value="">請選擇</option>
                         <option value="1" <?php if($user['activity_level'] == 1) echo 'selected'; ?>>久坐 (幾乎不運動)</option>
                         <option value="2" <?php if($user['activity_level'] == 2) echo 'selected'; ?>>輕度 (每週輕度運動1-3天)</option>
@@ -202,10 +206,11 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
 
                 <div class="setting-item">
                     <div class="item-label">
-                        <span class="label-main">每日目標熱量(kal)</span>
-                        <span class="label-sub">設定您每日預期攝取的卡路里</span>
+                        <span class="label-main">每日目標熱量(kcal)</span>
+                        <span class="label-sub" id="cal_suggestion_text">請填寫完整檔案以獲得建議</span>
+                        <span class="label-sub" id="cal_status_badge" style="font-size: 13px; margin-top: 4px;"></span>
                     </div>
-                    <input type="number" class="item-input" name="goal_cal" value="<?php echo htmlspecialchars($user['goal_cal']); ?>" required>
+                    <input type="number" class="item-input" name="goal_cal" id="goal_cal" value="<?php echo htmlspecialchars($user['goal_cal']); ?>" required oninput="checkCalorieStatus()">
                 </div>
             </div>
 
@@ -246,6 +251,108 @@ $time_d = $user['time_dinner'] ? substr($user['time_dinner'], 0, 5) : '18:00';
 <?php include('footer.php'); ?>
 
 <script>
+// 全域變數，紀錄經由公式算出來的當前容許範圍
+let minAllowedCal = 500;
+let maxAllowedCal = 5000;
+
+function calculateSuggestedCalories() {
+    const gender = document.getElementById('gender').value;
+    const height = parseFloat(document.getElementById('height').value);
+    const weight = parseFloat(document.getElementById('weight').value);
+    const activityLevel = document.getElementById('activity_level').value;
+    const suggestionText = document.getElementById('cal_suggestion_text');
+    const goalCalInput = document.getElementById('goal_cal');
+
+    if (!gender || !height || !weight || !activityLevel) {
+        suggestionText.innerHTML = "請填寫性別、身高、體重與活動量以取得建議";
+        document.getElementById('cal_status_badge').innerHTML = ""; // 清空警告
+        goalCalInput.removeAttribute('min');
+        goalCalInput.removeAttribute('max');
+        minAllowedCal = 500;
+        maxAllowedCal = 5000;
+        return;
+    }
+
+    // 1. 計算 BMR (Mifflin-St Jeor 公式，以大學生平均 20 歲計算)
+    const age = 20; 
+    let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+    if (gender == '1') {
+        bmr += 5;
+    } else {
+        bmr -= 161;
+    }
+
+    // 2. 根據活動量計算 TDEE
+    let tdeeMultiplier = 1.2;
+    if (activityLevel == '1') tdeeMultiplier = 1.2;   
+    if (activityLevel == '2') tdeeMultiplier = 1.375; 
+    if (activityLevel == '3') tdeeMultiplier = 1.55;  
+    if (activityLevel == '4') tdeeMultiplier = 1.725; 
+
+    const tdee = Math.round(bmr * tdeeMultiplier);
+
+    // 3. 設定容許值範圍 (TDEE 減 300 作為健康減脂下限，TDEE 加 300 作為增肌上限)
+    // 且下限防護不低於基礎代謝的 90%
+    const recommendedMin = Math.max(Math.round(bmr * 0.9), tdee - 300);
+    const recommendedMax = tdee + 300;
+
+    minAllowedCal = recommendedMin;
+    maxAllowedCal = recommendedMax;
+
+    // 4. 更新基本提示文字，並將 min/max 塞進 input 屬性中
+    suggestionText.innerHTML = `建議範圍：<b>${recommendedMin} ~ ${recommendedMax}</b> kcal (TDEE: ${tdee})`;
+    goalCalInput.setAttribute('min', minAllowedCal);
+    goalCalInput.setAttribute('max', maxAllowedCal);
+
+    // 計算完範圍後，立刻檢查一次當前輸入框內的數值狀態
+    checkCalorieStatus();
+}
+
+// 💡 核心功能：即時檢查並變色警告
+function checkCalorieStatus() {
+    const goalCalValue = document.getElementById('goal_cal').value;
+    const badge = document.getElementById('cal_status_badge');
+    
+    // 如果輸入框是空的，或者使用者還沒填完身體基本資料，就不顯示狀態
+    if (goalCalValue === "" || minAllowedCal === 500) {
+        badge.innerHTML = "";
+        return;
+    }
+
+    const currentCal = parseInt(goalCalValue);
+
+    if (currentCal < minAllowedCal) {
+        // 比容許下限低 -> 顯示藍字警告
+        badge.innerHTML = `⚠️ 警告：設定熱量過低（低於下限 ${minAllowedCal}），可能損害代謝！`;
+        badge.className = "label-sub status-too-low";
+    } else if (currentCal > maxAllowedCal) {
+        // 比容許上限高 -> 顯示紅字警告
+        badge.innerHTML = `⚠️ 警告：設定熱量過高（高於上限 ${maxAllowedCal}），超出日常消耗！`;
+        badge.className = "label-sub status-too-high";
+    } else {
+        // 落在安全範圍內 -> 顯示綠字安全標籤
+        badge.innerHTML = `✅ 熱量設定在健康容許範圍內。`;
+        badge.className = "label-sub status-safe";
+    }
+}
+
+// 表單送出時的安全防線
+function validateGoalCal() {
+    const goalCal = parseInt(document.getElementById('goal_cal').value);
+    const gender = document.getElementById('gender').value;
+    const height = document.getElementById('height').value;
+    const weight = document.getElementById('weight').value;
+    const activityLevel = document.getElementById('activity_level').value;
+
+    if (gender && height && weight && activityLevel) {
+        if (goalCal < minAllowedCal || goalCal > maxAllowedCal) {
+            alert(`儲存失敗！每日目標熱量必須介於 ${minAllowedCal} 到 ${maxAllowedCal} kcal 之間。`);
+            return false;
+        }
+    }
+    return true;
+}
+
 function toggleTimeSettings() {
     const checkbox = document.getElementById('notifyMealToggle');
     const timeBlock = document.getElementById('timeSettingsBlock');
@@ -255,6 +362,11 @@ function toggleTimeSettings() {
         timeBlock.style.display = 'none';
     }
 }
+
+// 網頁載入完成時，主動計算並初始化顏色狀態
+window.onload = function() {
+    calculateSuggestedCalories();
+};
 </script>
 
 </body>
