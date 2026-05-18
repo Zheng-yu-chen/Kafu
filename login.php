@@ -5,10 +5,21 @@ include('header.php');
 
 $error_msg = '';
 
+// 檢查是否有「記住帳密」的 Cookie，有就讀取出來預填
+$saved_account = isset($_COOKIE['saved_account']) ? $_COOKIE['saved_account'] : '';
+$saved_password = '';
+
+if (isset($_COOKIE['saved_password'])) {
+    $saved_password = base64_decode($_COOKIE['saved_password']);
+}
+
+$cookie_checked = (!empty($saved_account) && !empty($saved_password)) ? 'checked' : '';
+
 // 當表單送出時執行登入驗證
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $acc = $_POST['accounts'];
     $pwd = $_POST['password'];
+    $remember = isset($_POST['remember_me']); 
 
     $sql = "SELECT * FROM accounts WHERE accounts = ? AND password = ?";
     $stmt = $conn->prepare($sql);
@@ -19,12 +30,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
         
-        // 將資料存入 Session
         $_SESSION['u_id'] = $user['u_id'];
         $_SESSION['name'] = $user['name'];
         $_SESSION['role_id'] = $user['role_id'];
 
-        // 身分自動分流
+        if ($remember) {
+            setcookie('saved_account', $acc, time() + (30 * 24 * 60 * 60), "/", "", false, true);
+            setcookie('saved_password', base64_encode($pwd), time() + (30 * 24 * 60 * 60), "/", "", false, true);
+        } else {
+            if (isset($_COOKIE['saved_account'])) {
+                setcookie('saved_account', '', time() - 3600, "/");
+            }
+            if (isset($_COOKIE['saved_password'])) {
+                setcookie('saved_password', '', time() - 3600, "/");
+            }
+        }
+
         if ($user['role_id'] == 3) {
             echo "<script>window.location.href = 'profile.php';</script>";
         } else if ($user['role_id'] == 2) {
@@ -84,6 +105,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .input-pill input::placeholder { color: #aaa; }
     
+    /* 🚀 關鍵修改：強制移除所有瀏覽器預設生成的眼睛與清除按鈕 */
+    .input-pill input::-ms-reveal,
+    .input-pill input::-ms-clear {
+        display: none !important;
+    }
+    
+    /* 密碼顯示/隱藏按鈕樣式 */
+    .toggle-password {
+        background: none; border: none; padding: 0; margin-left: 10px;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .toggle-password svg { margin-right: 0; fill: #888; transition: 0.2s; }
+    .toggle-password:hover svg { fill: var(--fujen-blue, #002B5B); }
+    
+    /* 記住我與註冊排版樣式 */
+    .remember-container {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 20px; padding: 0 5px;
+    }
+    .checkbox-label {
+        display: flex; align-items: center; gap: 6px; color: #666; font-size: 13px; cursor: pointer;
+    }
+    .checkbox-label input { cursor: pointer; }
+    .register-link { color: #666; font-size: 13px; text-decoration: none; transition: 0.2s; }
+    .register-link:hover { color: var(--primary-orange, #FF8C42); }
+
     /* 圓潤的登入按鈕 */
     .submit-btn { 
         width: 100%; background: var(--primary-orange, #FF8C42); color: white; 
@@ -92,16 +139,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         box-shadow: 0 4px 10px rgba(255,140,66,0.3);
     }
     .submit-btn:active { transform: scale(0.97); }
-
-    /* 左右輔助連結 (註冊 / 忘記密碼) */
-    .helper-links {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-top: 18px; padding: 0 5px;
-    }
-    .helper-links a {
-        color: #666; font-size: 13px; text-decoration: none; transition: 0.2s;
-    }
-    .helper-links a:hover { color: var(--primary-orange, #FF8C42); }
     
     .error-msg { color: #ff4d4d; font-size: 13px; text-align: center; margin-bottom: 20px; font-weight: bold; background: #ffe6e6; padding: 10px; border-radius: 8px;}
     
@@ -115,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     .divider span { padding: 0 15px; }
 
-    /* 💡 長條形 Google 登入按鈕 */
+    /* 長條形 Google 登入按鈕 */
     .google-long-btn {
         display: flex; align-items: center; justify-content: center; gap: 10px;
         width: 100%; background: white; color: #555; border: 1px solid #ddd;
@@ -146,34 +183,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <form method="POST" action="">
             
-            <!-- 帳號輸入框 -->
             <div class="input-pill">
-                <!-- SVG User Icon -->
                 <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                <input type="text" name="accounts" placeholder="帳號" required autocomplete="off">
+                <input type="text" name="accounts" placeholder="帳號" value="<?php echo htmlspecialchars($saved_account); ?>" required autocomplete="off">
             </div>
             
-            <!-- 密碼輸入框 -->
             <div class="input-pill">
-                <!-- SVG Lock Icon -->
                 <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                <input type="password" name="password" placeholder="請輸入您的密碼" required>
+                <input type="password" name="password" id="password-input" placeholder="請輸入您的密碼" value="<?php echo htmlspecialchars($saved_password); ?>" required>
+                
+                <button type="button" class="toggle-password" id="toggle-password-btn" title="顯示/隱藏密碼">
+                    <svg id="eye-icon" viewBox="0 0 24 24">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                    </svg>
+                </button>
             </div>
             
-            <!-- 登入按鈕 -->
+            <div class="remember-container">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="remember_me" <?php echo $cookie_checked; ?>> 記住我
+                </label>
+                <a href="register.php" class="register-link">註冊帳號</a>
+            </div>
+            
             <button type="submit" class="submit-btn">登入</button>
-            
-            <!-- 註冊與忘記密碼 -->
-            <div class="helper-links">
-                <a href="register.php">註冊帳號</a>
-            </div>
 
-            <!-- 分隔線 -->
             <div class="divider">
                 <span>其他登入方式</span>
             </div>
 
-            <!-- 💡 單一長條形 Google 按鈕 -->
             <a href="google_login.php" class="google-long-btn">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
                 使用 Google 登入
@@ -187,3 +225,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         Information Management Sophomore Project
     </div>
 </div>
+
+<script>
+    const passwordInput = document.getElementById('password-input');
+    const togglePasswordBtn = document.getElementById('toggle-password-btn');
+    const eyeIcon = document.getElementById('eye-icon');
+
+    // 定義眼睛打開與閉合的 SVG Path 
+    const eyeOpenPath = "M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z";
+    const eyeClosePath = "M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.74-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 2.2 0 4.26-.6 6-1.64l.43.43 2.3 2.3 1.27-1.27L3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15c.01-.11.01-.22.01-.33 0-1.66-1.34-3-3-3-.11 0-.22 0-.33.01z";
+
+    togglePasswordBtn.addEventListener('click', function() {
+        // 檢查當前的 input type
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            // 將圖示換成閉眼 (含有斜線) 的路徑
+            eyeIcon.innerHTML = `<path d="${eyeClosePath}"/>`;
+        } else {
+            passwordInput.type = 'password';
+            // 將圖示換成開眼的路徑
+            eyeIcon.innerHTML = `<path d="${eyeOpenPath}"/>`;
+        }
+    });
+</script>
