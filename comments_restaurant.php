@@ -79,26 +79,29 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
     }
 
     .user-avatar {
-        width: 22px;
-        height: 22px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         object-fit: cover;
         border: 1px solid #ddd;
     }
 
     .user-avatar-placeholder {
-        width: 22px;
-        height: 22px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         background-color: #e9ecef; 
         border: 1px solid #ced4da; 
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         box-sizing: border-box;
+        font-size: 14px;
     }
 
     .filter-control-bar {
         display: flex;
-        gap: 10px;
+        gap: 8px; /* 稍微縮小間距以容納三個元件 */
         margin-bottom: 20px;
     }
     .search-input-wrapper {
@@ -143,8 +146,8 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
         box-shadow: 0 2px 8px rgba(0, 43, 91, 0.1);
     }
 
-    .control-sort {
-        padding: 0 15px;
+    .control-sort, .control-filter-stars {
+        padding: 0 10px;
         border-radius: 20px;
         border: 1px solid #ddd;
         font-size: 13px;
@@ -173,6 +176,7 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
         justify-content: center;
         font-size: 16px;
         transition: background 0.2s, transform 0.1s;
+        z-index: 5;
     }
     .comment-delete-btn:hover {
         background: rgba(244,67,54,0.18);
@@ -196,12 +200,23 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
     <div class="filter-control-bar">
         <div class="search-input-wrapper">
             <img src="icon/search_icon.png" class="search-icon" alt="搜尋" onclick="filterAndSortComments()">
-            <input type="text" id="commentSearch" class="control-search" placeholder="搜尋餐點名稱或評論關鍵字..." onkeydown="if(event.key === 'Enter') filterAndSortComments()">
+            <input type="text" id="commentSearch" class="control-search" placeholder="搜尋餐點或關鍵字..." onkeydown="if(event.key === 'Enter') filterAndSortComments()">
         </div>
+        
+        <select id="commentFilterStars" class="control-filter-stars" onchange="filterAndSortComments()">
+            <option value="all">★所有</option>
+            <option value="5">★5星</option>
+            <option value="4">★4星</option>
+            <option value="3">★3星</option>
+            <option value="2">★2星</option>
+            <option value="1">★1星</option>
+        </select>
+
         <select id="commentSort" class="control-sort" onchange="filterAndSortComments()">
-            <option value="latest">⏰︎ 最新評論</option>
-            <option value="rating_desc">★ 評分：高到低</option>
-            <option value="rating_asc">★ 評分：低到高</option>
+            <option value="latest">⏰︎最新評論</option>
+            <option value="has_image">含餐點圖片</option>
+            <option value="one_month">一個月內</option>
+            <option value="one_week">一個禮拜內</option>
         </select>
     </div>
 
@@ -214,21 +229,27 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                 <div class="comment-card-item" 
                      data-rating="<?php echo $com['rating']; ?>"
                      data-time="<?php echo strtotime($com['created_at']); ?>"
+                     data-has-image="<?php echo !empty($com['com_img']) ? 'true' : 'false'; ?>"
                      data-text="<?php echo htmlspecialchars(mb_strtolower($com['item_name'] . $com['content'])); ?>">
                     
                     <div style="background:white; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; position: relative;">
                         <?php if ($is_admin): ?>
                             <button class="comment-delete-btn" onclick="deleteComment(<?php echo $com['com_id']; ?>, this)" title="刪除評論">🗑</button>
                         <?php endif; ?>
+                        
                         <div class="user-tag">
                             <?php if (!empty($com['user_photo'])): ?>
-                                <img src="images/<?php echo htmlspecialchars($com['user_photo']); ?>" class="user-avatar" alt="頭像">
+                                <img src="uploads/<?php echo htmlspecialchars($com['user_photo']); ?>" 
+                                     class="user-avatar" 
+                                     alt="頭像" 
+                                     onerror="this.onerror=null; this.src=this.src.replace('.jpg', '.JPG');">
                             <?php else: ?>
-                                <div class="user-avatar-placeholder"></div>
+                                <div class="user-avatar-placeholder">👤</div>
                             <?php endif; ?>
                             
                             <?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?>
                         </div>
+                        
                         <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 4px;">
                             <strong style="font-size: 16px; color: #333;"><?php echo htmlspecialchars($com['item_name']); ?></strong>
                             <span style="color:#FF8C42; font-weight: bold;">★ <?php echo $com['rating']; ?></span>
@@ -263,7 +284,7 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 
     <div id="noMatchMessage" class="hidden" style="text-align:center; color:#ccc; padding: 50px 0;">
         <p style="font-size: 40px; margin: 0;"></p>
-        <p style="margin-top: 10px;">找不到符合關鍵字的評價內容喔！</p>
+        <p style="margin-top: 10px;">找不到符合篩選條件的評價內容喔！</p>
     </div>
 </div>
 
@@ -274,32 +295,53 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 <script>
     function filterAndSortComments() {
         const keyword = document.getElementById('commentSearch').value.toLowerCase().trim();
-        const sortMode = document.getElementById('commentSort').value;
+        const selectedStar = document.getElementById('commentFilterStars').value; 
+        const sortMode = document.getElementById('commentSort').value; // 最新、有圖片、一個月、一個禮拜
         const container = document.getElementById('commentsContainer');
         const cards = Array.from(container.getElementsByClassName('comment-card-item'));
 
         if (cards.length === 0) return;
 
-        //關鍵字過濾
+        // 🎯 1. 取得網頁執行的當前時間戳記，用來計算時間範圍
+        const nowTs = Math.floor(Date.now() / 1000);
+        const oneWeekSec = 7 * 24 * 60 * 60;   // 7天的總秒數
+        const oneMonthSec = 30 * 24 * 60 * 60; // 30天的總秒數
+
+        // 🎯 2. 四重連動過濾（關鍵字 + 星級過濾 + 時間範圍過濾 + 是否帶有圖片）
         cards.forEach(card => {
             const text = card.getAttribute('data-text');
-            if (text.includes(keyword)) {
+            const rating = card.getAttribute('data-rating');
+            const hasImg = card.getAttribute('data-has-image');
+            const timeTs = parseInt(card.getAttribute('data-time'), 10); 
+            
+            // 條件 A：關鍵字比對
+            const matchesKeyword = text.includes(keyword);
+            
+            // 條件 B：星級比對
+            const matchesStar = (selectedStar === 'all' || rating === selectedStar);
+            
+            // 條件 C：時間區段範圍與餐點圖片篩選邏輯組合
+            let matchesCondition = true;
+            if (sortMode === 'one_week') {
+                matchesCondition = (nowTs - timeTs <= oneWeekSec);
+            } else if (sortMode === 'one_month') {
+                matchesCondition = (nowTs - timeTs <= oneMonthSec);
+            } else if (sortMode === 'has_image') {
+                // 🎯 如果選中「有餐點圖片」，卡片的屬性必須為 'true' 才能通過
+                matchesCondition = (hasImg === 'true');
+            }
+
+            // 四個條件必須同時滿足時顯示，否則隱藏
+            if (matchesKeyword && matchesStar && matchesCondition) {
                 card.classList.remove('hidden');
             } else {
                 card.classList.add('hidden');
             }
         });
 
-        //星級與時間排序
+        // 🎯 3. 排序執行：預設一律採由新到舊排序
         cards.sort((a, b) => {
-            if (sortMode === 'latest') {
-                return b.getAttribute('data-time') - a.getAttribute('data-time'); 
-            } else if (sortMode === 'rating_desc') {
-                return b.getAttribute('data-rating') - a.getAttribute('data-rating'); 
-            } else if (sortMode === 'rating_asc') {
-                return a.getAttribute('data-rating') - b.getAttribute('data-rating'); 
-            }
-            return 0;
+            return b.getAttribute('data-time') - a.getAttribute('data-time'); 
         });
 
         cards.forEach(card => container.appendChild(card));

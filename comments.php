@@ -17,7 +17,7 @@ $sql = "SELECT
         LEFT JOIN items i ON cat.c_id = i.c_id
         LEFT JOIN comments c ON i.item_id = c.item_id AND c.status = 1
         GROUP BY r.r_id, r.name, r.location, r.image_url
-        ORDER BY avg_rating DESC, r.r_id ASC";
+        ORDER BY r.r_id ASC";
 
 try {
     $result = $conn->query($sql);

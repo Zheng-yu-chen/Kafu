@@ -148,7 +148,6 @@ if ($item_query) {
         </div>
 
         <button type="submit" class="submit-btn" id="submitBtn">提交評價</button>
-        <div class="submit-hint">評價將在管理員審核通過後顯示</div>
     </form>
 </div>
 
