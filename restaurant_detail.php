@@ -64,15 +64,34 @@ if ($r_id === 0) {
     exit();
 }
 
-$res_sql = "SELECT name, location FROM restaurants WHERE r_id = $r_id";
+// 🟢 調整後的 SQL：改用 r.r_id 串接 o.r_id，並撈取新欄位 meat_type 與 country
+$res_sql = "SELECT r.name, r.location 
+            FROM restaurants r 
+            WHERE r.r_id = $r_id";
+
 $res_result = $conn->query($res_sql);
 $res_name = "餐廳資訊";
 $res_loc = "未知位置";
+$res_place = ""; // 用來儲存合併後的肉品來源字串
 
 if ($res_result && $res_result->num_rows > 0) {
     $res_data = $res_result->fetch_assoc();
     $res_name = $res_data['name'];
     $res_loc = $res_data['location'];
+}
+
+// 🟢 獨立撈取該餐廳所有的肉品來源
+$origin_sql = "SELECT meat_type, country FROM meatorigins WHERE r_id = $r_id";
+$origin_result = $conn->query($origin_sql);
+$origin_list = [];
+
+if ($origin_result && $origin_result->num_rows > 0) {
+    while ($ori_data = $origin_result->fetch_assoc()) {
+        // 組合格式例如：「豬肉(台灣)」、「牛肉(美國)」
+        $origin_list[] = $ori_data['meat_type'] . " : " . $ori_data['country'];
+    }
+    // 用逗號把多筆來源接起來，例如：「豬肉 : 台灣, 牛肉 : 美國」
+    $res_place = implode(' / ', $origin_list); 
 }
 
 $sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein, i.fat, i.carbs, i.is_vegetarian
@@ -258,9 +277,38 @@ $result = $conn->query($sql);
 
 <div class="header-section">
     <a href="index.php" class="back-btn">❮ 返回店家列表</a>
-    <div class="header-title">
-        <h1><?php echo htmlspecialchars($res_name); ?></h1>
-        <p><img src="icon/destination_icon.png" alt="地點" class="dest-icon"><?php echo htmlspecialchars($res_loc); ?> • 餐點列表</p>
+    
+    <div class="header-title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px;">
+        
+        <h1 style="margin: 0; font-size: 24px; color: #ffffff;">
+            <?php echo htmlspecialchars($res_name); ?>
+        </h1>
+        
+        <p style="margin: 0; display: flex; align-items: center; gap: 4px;">
+            <img src="icon/destination_icon.png" alt="地點" class="dest-icon">
+            <?php echo htmlspecialchars($res_loc); ?> • 餐點列表
+        </p>
+        
+        <?php if (!empty($res_place)): ?>
+            <div style="margin-top: 2px;">
+                <span style="
+                    font-size: 11px; 
+                    background-color: rgba(255, 255, 255, 0.15); /* 💡 白色 15% 透明度，會依底色呈現細緻的淺灰透明感 */
+                    color: #ffffff; /* 💡 字體白色 */
+                    border: none; /* 💡 不要邊框 */
+                    padding: 3px 8px; 
+                    border-radius: 5px; 
+                    font-weight: 500;
+                    letter-spacing: 0.5px;
+                    display: inline-flex;
+                    align-items: center;
+                    backdrop-filter: blur(2px); /* 選擇性：加上微微的毛玻璃模糊效果，更有質感 */
+                ">
+                    🥩 肉類來源：<?php echo htmlspecialchars($res_place); ?>
+                </span>
+            </div>
+        <?php endif; ?>
+        
     </div>
 </div>
 <div class="menu-container">
