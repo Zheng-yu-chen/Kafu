@@ -1,0 +1,21 @@
+{
+  "short_name": "KaFu",
+  "name": "KaFu輔大熱量計算機",
+  "icons": [
+    {
+      "src": "images/logo_192.png.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "images/logo_512.png.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.php",
+  "background_color": "#002B5B",
+  "display": "standalone",
+  "theme_color": "#002B5B",
+  "orientation": "portrait"
+}
