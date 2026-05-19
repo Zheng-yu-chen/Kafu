@@ -3,7 +3,6 @@ session_start();
 include('db.php');
 include('header.php');
 
-
 $canRecommendRemaining = true;
 if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1, 2])) {
     $canRecommendRemaining = false;
@@ -19,8 +18,10 @@ $cal_max = isset($_GET['cal_max']) ? intval($_GET['cal_max']) : 2000;
 $is_veg = isset($_GET['is_veg']) ? 1 : 0;
 $low_cal = isset($_GET['low_cal']) ? 1 : 0;
 $high_pro = isset($_GET['high_pro']) ? 1 : 0;
+$sort_by = isset($_GET['sort_by']) ? $_GET['sort_by'] : 'price'; // 預設排價格
+$sort_direction = isset($_GET['sort_direction']) ? $_GET['sort_direction'] : 'asc'; // 預設低到高
 
-// 3.  判斷是否為「進階搜尋模式」
+// 3. 判斷是否為「進階搜尋模式」
 $is_advanced_search = (!empty($search) || $price_max < 300 || $cal_max < 2000 || $is_veg || $low_cal || $high_pro);
 
 if ($is_advanced_search) {
@@ -48,13 +49,16 @@ if ($is_advanced_search) {
     if ($low_cal) $sql .= " AND i.calories < 500 AND i.calories IS NOT NULL";
     if ($high_pro) $sql .= " AND i.protein > 20 AND i.protein IS NOT NULL";
     
-    // 地區篩選
+    // 💡 修正：在餐點模式下也綁定地區過濾（心園、理園、輔園）
     if ($filter !== '全部') {
         $filter_safe = mysqli_real_escape_string($conn, $filter);
         $sql .= " AND r.location = '$filter_safe'";
     }
     
-    $sql .= " ORDER BY i.price ASC"; 
+    $safe_sort_by = ($sort_by === 'calories') ? 'i.calories' : 'i.price';
+    $safe_direction = ($sort_direction === 'desc') ? 'DESC' : 'ASC';
+    
+    $sql .= " ORDER BY $safe_sort_by $safe_direction";
     
 } else {
     // 模式 B：預設模式，顯示整間「餐廳」
@@ -63,11 +67,15 @@ if ($is_advanced_search) {
             LEFT JOIN items i ON c.c_id = i.c_id
             WHERE 1=1";
 
+    // 💡 地區過濾（心園、理園、輔園）
     if ($filter !== '全部') {
         $filter_safe = mysqli_real_escape_string($conn, $filter);
         $sql .= " AND r.location = '$filter_safe'";
     }
-    $sql .= " ORDER BY r.r_id ASC";
+    $safe_sort_by = ($sort_by === 'calories') ? 'i.calories' : 'i.price';
+    $safe_direction = ($sort_direction === 'desc') ? 'DESC' : 'ASC';
+    
+    $sql .= " ORDER BY $safe_sort_by $safe_direction";
 }
 
 $result = $conn->query($sql);
@@ -112,19 +120,22 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     
     .search-input-wrapper { flex: 1; position: relative; display: flex; }
     .search-extra {
-    margin-top: 15px; /* 稍微增加與搜尋框的間距 */
-    display: flex;
-    justify-content: center; /* 水平置中核心 */
-    align-items: center;
-    width: 100%;
-}
-    .search-extra {
-    margin-top: 15px; /* 稍微增加與搜尋框的間距 */
-    display: flex;
-    justify-content: center; /* 水平置中核心 */
-    align-items: center;
-    width: 100%;
-}
+        margin-top: 15px; 
+        display: flex;
+        justify-content: center; 
+        align-items: center;
+        width: 100%;
+    }
+    
+    /* 排序切換鈕樣式 */
+    .sort-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding: 0 4px; }
+    .sort-options { display: flex; gap: 8px; }
+    .sort-toggle-btn { 
+        background: #f0f0f0; border: none; border-radius: 12px; 
+        padding: 6px 12px; font-size: 12px; font-weight: bold; 
+        color: #555; cursor: pointer; display: flex; align-items: center; gap: 4px; 
+    }
+    .sort-toggle-btn.active { background: #FFF3EB; color: var(--primary-orange, #FF8C42); }
     
     .recommend-btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .recommend-panel { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 20px; }
@@ -184,7 +195,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     .restaurant-list { padding: 25px 20px; padding-bottom: 100px; }
     .res-card { background: white; border-radius: 15px; padding: 15px; display: flex; align-items: center; text-decoration: none; color: inherit; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     
-    /* 圖片外框與內層設定 */
+    /* 餐廳模式下的圖片外框 */
     .res-img { width: 60px; height: 60px; background: #FFF3EB; border-radius: 12px; margin-right: 15px; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-shrink: 0; font-size: 26px; }
     .res-actual-img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
     
@@ -197,9 +208,9 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
         width: 16px;
         height: 16px;
         object-fit: contain;
-        vertical-align: middle; /* 💡 改成 middle 讓它垂直置中對齊文字 */
+        vertical-align: middle; 
         margin-right: 4px;
-        margin-bottom: 3px; /* 💡 稍微加上一點底邊距，把圖示往上推 */
+        margin-bottom: 3px; 
         opacity: 0.9;
     }
 
@@ -216,6 +227,49 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     .item-macros { display: flex; gap: 6px; font-size: 12px; font-weight: bold; color: var(--primary-orange, #FF8C42); border-left: 1px solid #ddd; padding-left: 8px; }
 
     .btn-go-text { color: #ccc; font-size: 12px; white-space: nowrap; margin-left: 10px; }
+
+    /* 實心橘色按盤按鈕 */
+    .btn-solid-orange {
+        background: var(--primary-orange, #FF8C42) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(255, 140, 66, 0.3);
+        transition: all 0.2s ease;
+    }
+    .btn-solid-orange:hover {
+        background: #F57C00 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 140, 66, 0.4);
+    }
+    .btn-solid-orange:active { transform: translateY(0); }
+
+    /* 實心深藍（輔大藍）前往餐廳按鈕 */
+    .btn-solid-blue {
+        background: var(--fujen-blue, #002B5B) !important;
+        color: white !important;
+        border: none !important;
+        text-decoration: none;
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(0, 43, 91, 0.2);
+        transition: all 0.2s ease;
+    }
+    .btn-solid-blue:hover {
+        background: #001f42 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 43, 91, 0.3);
+    }
+    .btn-solid-blue:active { transform: translateY(0); }
 
     /* --- 小助理隱形外框與按鈕 --- */
     .ai-fixed-wrapper {
@@ -240,14 +294,6 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     }
     .assistant-header { background: var(--fujen-blue, #002B5B); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
     .assistant-body { padding: 18px; font-size: 14px; }
-    .recommend-actions { display: flex; gap: 10px; margin: 15px 0; }
-    .btn-action { flex: 1; padding: 10px; border: 1.5px solid var(--primary-orange, #FF8C42); background: white; color: var(--primary-orange, #FF8C42); border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px; }
-    .filter-options { background: #f9f9f9; padding: 12px; border-radius: 12px; }
-    .checkbox-item { display: block; margin-bottom: 8px; font-size: 13px; cursor: pointer; }
-    .btn-submit { width: 100%; background: var(--fujen-blue, #002B5B); color: white; border: none; padding: 10px; border-radius: 10px; margin-top: 10px; font-weight: bold; cursor: pointer; }
-    #recommend-result { margin-top: 15px; padding: 12px; background: #FFF3EB; border-radius: 12px; border-left: 4px solid var(--primary-orange, #FF8C42); }
-    .result-name { font-weight: bold; color: var(--fujen-blue, #002B5B); display: block; }
-    .btn-go { display: inline-block; margin-top: 8px; color: var(--primary-orange, #FF8C42); text-decoration: none; font-weight: bold; }
 </style>
 
 <div class="top-banner">
@@ -255,7 +301,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
         <a href="index.php">
             <img src="logo.png" alt="Logo" class="logo-img">
         </a>
-        </div>
+    </div>
     <div class="search-wrapper">
         <form action="index.php" method="GET" id="searchForm">
             <input type="hidden" name="filter" value="<?php echo htmlspecialchars($filter); ?>">
@@ -272,20 +318,20 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
             </div>
 
             <?php if ($canRecommendRemaining && isset($_SESSION['u_id'])): ?>
-<div class="search-extra" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-    <div class="remaining-calorie">
-        今日剩餘熱量：<?php echo $remaining_cal; ?> kcal
-    </div>
-    <div id="random-dice-btn" onclick="fetchRandomDish()" 
-         style="cursor: pointer; font-size: 20px; background: rgba(255,255,255,0.2); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-        🎲
-    </div>
-    <a href="favorites.php" id="home-favorite-btn" title="查看收藏餐點"
-           style="text-decoration: none; cursor: pointer; font-size: 18px; background: rgba(255,255,255,0.2); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            ❤️
-        </a>
-</div>
-<?php endif; ?>
+            <div class="search-extra" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                <div class="remaining-calorie">
+                    今日剩餘熱量：<?php echo $remaining_cal; ?> kcal
+                </div>
+                <div id="random-dice-btn" onclick="fetchRandomDish()" 
+                     style="cursor: pointer; font-size: 20px; background: rgba(255,255,255,0.2); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    🎲
+                </div>
+                <a href="favorites.php" id="home-favorite-btn" title="查看收藏餐點"
+                       style="text-decoration: none; cursor: pointer; font-size: 18px; background: rgba(255,255,255,0.2); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    ❤️
+                </a>
+            </div>
+            <?php endif; ?>
 
             <div class="adv-panel" id="advPanel">
                 <div class="range-group">
@@ -323,23 +369,18 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                     <a href="index.php?filter=<?php echo urlencode($filter); ?>" style="font-size:12px; color:#999; text-decoration:none;">✕ 清除所有條件</a>
                 </div>
             </div>
-
-            <div id="remainingRecommendPanel" class="recommend-panel" onclick="closeRecommendPanel(event)">
-                <div class="recommend-card" onclick="event.stopPropagation();">
-                    <div class="recommend-header">
-                        <span class="recommend-title">符合今日剩餘熱量的推薦餐點</span>
-                        <button type="button" class="recommend-close" onclick="closeRecommendPanel(event)">✕</button>
-                    </div>
-                    <div id="recommendBody" class="recommend-body"></div>
-                </div>
-            </div>
         </form>
     </div>
 </div>
 
 <div class="filter-container">
-    <?php foreach (['全部', '心園', '理園', '輔園'] as $nav): ?>
-        <a href="index.php?filter=<?php echo urlencode($nav); ?>" class="filter-btn <?php echo ($filter == $nav) ? 'active' : ''; ?>"><?php echo $nav; ?></a>
+    <?php foreach (['全部', '心園', '理園', '輔園'] as $nav): 
+        // 建立 URL 參數，讓點選學餐分類時，能同時保留原本搜尋的關鍵字、預算、高蛋白等設定
+        $query_args = $_GET;
+        $query_args['filter'] = $nav;
+        $link_url = "index.php?" . http_build_query($query_args);
+    ?>
+        <a href="<?php echo htmlspecialchars($link_url); ?>" class="filter-btn <?php echo ($filter == $nav) ? 'active' : ''; ?>"><?php echo $nav; ?></a>
     <?php endforeach; ?>
 </div>
 
@@ -347,17 +388,41 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     <?php if ($result->num_rows > 0): ?>
         
         <?php if ($is_advanced_search): ?>
-            <h4 style="margin-top:0; margin-bottom:15px; color:#666;">為您找到的餐點：</h4>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    const form = document.getElementById('searchForm');
+                    if (form) {
+                        form.insertAdjacentHTML('beforeend', `<input type="hidden" name="sort_by" id="form_sort_by" value="<?php echo $sort_by; ?>">`);
+                        form.insertAdjacentHTML('beforeend', `<input type="hidden" name="sort_direction" id="form_sort_direction" value="<?php echo $sort_direction; ?>">`);
+                    }
+                });
+            </script>
+
+            <div class="sort-bar">
+                <span style="font-size: 14px; font-weight: bold; color: #666;">
+                    為您找到的餐點 (<?php echo htmlspecialchars($filter); ?>)
+                </span>
+                <div class="sort-options">
+                    <button type="button" class="sort-toggle-btn <?php echo ($sort_by == 'price') ? 'active' : ''; ?>" onclick="handleSortToggle('price')">
+                        💰 價格 
+                        <?php if ($sort_by == 'price') echo ($sort_direction == 'desc') ? '↓' : '↑'; ?>
+                    </button>
+                    <button type="button" class="sort-toggle-btn <?php echo ($sort_by == 'calories') ? 'active' : ''; ?>" onclick="handleSortToggle('calories')">
+                        🔥 熱量 
+                        <?php if ($sort_by == 'calories') echo ($sort_direction == 'desc') ? '↓' : '↑'; ?>
+                    </button>
+                </div>
+            </div>
+            
             <?php while($row = $result->fetch_assoc()): ?>
-                <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="res-card">
-                    <div class="item-card-info" style="margin-right: 10px;">
+                <div class="res-card" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="item-card-info">
                         <div class="item-text-content">
                             <h3 class="item-name"><?php echo htmlspecialchars($row['item_name']); ?></h3>
                             <p class="item-meta">
                                 <?php echo htmlspecialchars($row['res_name']); ?> • 
                                 <img src="icon/destination_icon.png" alt="地點" class="dest-icon"> <?php echo htmlspecialchars($row['location']); ?>
                             </p>
-                            
                             <div class="item-nutrition-row">
                                 <span class="item-price">$<?php echo floatval($row['price']); ?></span>
                                 <?php if($row['calories']): ?>
@@ -365,17 +430,30 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                                         <img src="icon/fire_icon.png" class="fire-icon" alt="熱量"> <?php echo $row['calories']; ?> kcal
                                     </span>
                                 <?php endif; ?>
-                                
                                 <div class="item-macros">
                                     <?php if($row['protein'] !== null) echo "<span>蛋白質 " . floatval($row['protein']) . "g</span>"; ?>
                                     <?php if($row['fat'] !== null) echo "<span>脂肪 " . floatval($row['fat']) . "g</span>"; ?>
-                                    <?php if($row['carbs'] !== null) echo "<span>碳水 " . floatval($row['carbs']) . "g</span>"; ?>
+                                    <?php if($row['carbs'] !== null) echo "<span>碳水化合物 " . floatval($row['carbs']) . "g</span>"; ?>
                                 </div>
                             </div>
                         </div>
-                        <div class="btn-go-text">前往店家 ❯</div>
                     </div>
-                </a>
+                    <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin-left: 10px;">
+                        <form action="add_to_tray.php" method="POST" style="margin: 0;">
+                            <input type="hidden" name="item_id" value="<?php echo $row['item_id']; ?>">
+                            <input type="hidden" name="eat_date" value="<?php echo date('Y-m-d'); ?>">
+                            <input type="hidden" name="meal_time" value="全天">
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="btn-solid-orange">
+                                加入托盤+
+                            </button>
+                        </form>
+                        
+                        <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="btn-solid-blue">
+                            前往餐廳 ❯
+                        </a>
+                    </div>
+                </div>
             <?php endwhile; ?>
             
         <?php else: ?>
@@ -398,7 +476,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     <?php else: ?>
         <div style="text-align:center; padding:50px; color:#ccc;">
             <div style="font-size:40px; margin-bottom:10px;">🥺</div>
-            找不到符合條件的結果<br>試著放寬篩選條件看看！
+            在「<?php echo htmlspecialchars($filter); ?>」找不到符合條件的結果<br>試著換個學餐或放寬篩選條件看看！
         </div>
     <?php endif; ?>
 </div>
@@ -428,7 +506,6 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
 </div>
 
 <script>
-// --- 1. 送出訊息與 API 串接 ---
 async function sendMessage() {
     const chatInput = document.getElementById('chat-input');
     const chatBox = document.getElementById('chat-box');
@@ -437,11 +514,9 @@ async function sendMessage() {
     const message = chatInput.value.trim();
     if (!message) return;
 
-    // 顯示使用者訊息
     appendMessage('user', message);
     chatInput.value = '';
 
-    // 顯示思考中
     const loadingId = 'loading-' + Date.now();
     appendMessage('ai', '正在幫你挑選美食...', loadingId);
 
@@ -452,13 +527,11 @@ async function sendMessage() {
             body: JSON.stringify({ message: message })
         });
 
-        const rawText = await response.text(); // 先抓原始文字，方便 Debug
-        
+        const rawText = await response.text();
         try {
             const data = JSON.parse(rawText);
             document.getElementById(loadingId).innerText = data.reply || "我現在有點頭暈，晚點再說。";
         } catch (jsonErr) {
-            // 如果 PHP 報錯（噴出 HTML 錯誤訊息），會在這裡捕捉到
             console.error("PHP 回傳內容異常:", rawText);
             document.getElementById(loadingId).innerText = "後端回傳格式不對，請檢查 chat_api.php。";
         }
@@ -468,12 +541,10 @@ async function sendMessage() {
     }
 }
 
-// --- 2. 訊息氣泡生成 ---
 function appendMessage(role, text, id = '') {
     const chatBox = document.getElementById('chat-box');
     const msgDiv = document.createElement('div');
     
-    // 樣式調整
     msgDiv.style.padding = "10px 14px";
     msgDiv.style.borderRadius = "15px";
     msgDiv.style.fontSize = "13px";
@@ -483,7 +554,7 @@ function appendMessage(role, text, id = '') {
     
     if (role === 'user') {
         msgDiv.style.alignSelf = "flex-end";
-        msgDiv.style.background = "#002B5B"; // 輔大藍
+        msgDiv.style.background = "#002B5B"; 
         msgDiv.style.color = "white";
         msgDiv.style.borderBottomRightRadius = "2px";
     } else {
@@ -499,13 +570,10 @@ function appendMessage(role, text, id = '') {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// --- 3. 初始化與事件監聽 ---
 document.addEventListener("DOMContentLoaded", function() {
-    // 確保 AI 助理按鈕在最上層
     const aiWrapper = document.getElementById('ai-wrapper');
     if (aiWrapper) document.body.appendChild(aiWrapper);
 
-    // 綁定 Enter 鍵
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
         chatInput.addEventListener('keypress', function(e) {
@@ -513,7 +581,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // --- 原本的篩選面板與推薦功能 (保留) ---
     const urlParams = new URLSearchParams(window.location.search);
     if(urlParams.has('low_cal') || urlParams.has('high_pro') || urlParams.has('is_veg')) {
         const advPanel = document.getElementById('advPanel');
@@ -521,13 +588,11 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// 切換助理視窗顯示
 function toggleAssistant() {
     const card = document.getElementById('assistant-card');
     if (card) {
         const isHidden = card.style.display === 'none' || card.style.display === '';
         card.style.display = isHidden ? 'block' : 'none';
-        // 開啟時自動捲動到底部
         if (isHidden) {
             const chatBox = document.getElementById('chat-box');
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -535,103 +600,19 @@ function toggleAssistant() {
     }
 }
 
-// 原本的進階篩選切換
 function toggleAdvPanel() {
     const panel = document.getElementById('advPanel');
     if (panel) panel.classList.toggle('active');
 }
-function toggleAssistant() {
-    const card = document.getElementById('assistant-card');
-    card.style.display = (card.style.display === 'block') ? 'none' : 'block';
-}
-
-function toggleFilter() {
-    const section = document.getElementById('filter-section');
-    section.style.display = (section.style.display === 'block') ? 'none' : 'block';
-    document.getElementById('recommend-result').style.display = 'none';
-}
-
-const canRecommendRemaining = <?php echo $canRecommendRemaining ? 'true' : 'false'; ?>;
-
-function fetchRecommend(mode) {
-    let url = 'get_recommend.php?mode=' + mode;
-    
-    if(mode === 'filter') {
-        const prefs = Array.from(document.querySelectorAll('.pref-check:checked')).map(c => c.value);
-        if(prefs.length > 0) url += '&prefs=' + prefs.join(',');
-    }
-
-    fetch(url)
-    .then(res => res.json())
-    .then(data => {
-        const resDiv = document.getElementById('recommend-result');
-        resDiv.style.display = 'block';
-        if(data.success) {
-            resDiv.innerHTML = `
-                <small style="color: #FF8C42;">💡 推薦試試：</small>
-                <span class="result-name">${data.name}</span>
-                <p style="font-size: 12px; margin: 5px 0; color:#555;">於 ${data.restaurant} <br><img src="icon/fire_icon.png" style="width:10px; vertical-align:middle; margin-right:2px;"> ${data.calories} kcal | 蛋白質 ${data.protein} g</p>
-                <a href="restaurant_detail.php?r_id=${data.r_id}" class="btn-go">前往餐廳看看 ❯</a>
-            `;
-        } else {
-            resDiv.innerHTML = "<p style='color:#999; margin:0;'>暫時找不到符合條件的餐點...🥺<br>試著放寬條件看看！</p>";
-        }
-    });
-}
-
-function fetchRecommendRemaining(maxCal) {
-    if (!canRecommendRemaining) {
-        alert('管理員與店家身分無法使用剩餘熱量推薦功能。');
-        return;
-    }
-    const panel = document.getElementById('remainingRecommendPanel');
-    const body = document.getElementById('recommendBody');
-    panel.style.display = 'flex';
-    if (maxCal <= 0) {
-        body.innerHTML = "<p class='recommend-empty'>您今日已達或超過熱量目標，請先調整紀錄再查看推薦餐點。</p>";
-        return;
-    }
-
-    body.innerHTML = "<p class='recommend-empty'>讀取符合剩餘熱量的餐點...</p>";
-    fetch(`get_recommend.php?mode=remaining&max_cal=${encodeURIComponent(maxCal)}`)
-    .then(res => res.json())
-    .then(data => {
-        if (data.success && data.items && data.items.length) {
-            body.innerHTML = `
-                ${data.items.map(item => `
-                    <div class="recommend-item">
-                        <p class="recommend-item-name">${item.name}</p>
-                        <p class="recommend-item-meta">${item.restaurant} • ${item.calories} kcal • $${item.price}</p>
-                        <a href="restaurant_detail.php?r_id=${item.r_id}" style="color:#FF8C42; font-size:12px; font-weight:bold; text-decoration:none;">前往店家 ❯</a>
-                    </div>
-                `).join('')}
-            `;
-        } else {
-            body.innerHTML = "<p class='recommend-empty'>沒有找到符合剩餘熱量的餐點，可修改篩選條件或稍後再試。</p>";
-        }
-    })
-    .catch(() => {
-        body.innerHTML = "<p class='recommend-empty'>無法取得推薦，請稍後再試。</p>";
-    });
-}
-
-function closeRecommendPanel(event) {
-    if (event) event.stopPropagation();
-    const panel = document.getElementById('remainingRecommendPanel');
-    panel.style.display = 'none';
-}
 
 function fetchRandomDish() {
     const btn = document.getElementById('random-dice-btn');
-    
-    // 旋轉動畫
     btn.style.transform = 'rotate(720deg)';
     
     fetch('get_recommend.php?mode=random')
     .then(res => res.json())
     .then(data => {
         if(data.success && data.r_id) {
-            // 取得餐廳名稱 (restaurant)，傳給下一頁顯示
             const resName = encodeURIComponent(data.restaurant || "好吃的店家");
             window.location.href = `restaurant_detail.php?r_id=${data.r_id}&from=dice&name=${resName}`;
         } else {
@@ -645,6 +626,22 @@ function fetchRandomDish() {
     });
 }
 
+function handleSortToggle(targetField) {
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentField = urlParams.get('sort_by') || 'price';
+    let currentDirection = urlParams.get('sort_direction') || 'asc';
+    let nextDirection = 'asc';
+    
+    if (currentField === targetField) {
+        nextDirection = (currentDirection === 'asc') ? 'desc' : 'asc';
+    } else {
+        nextDirection = 'asc';
+    }
+    
+    urlParams.set('sort_by', targetField);
+    urlParams.set('sort_direction', nextDirection);
+    window.location.href = window.location.pathname + '?' + urlParams.toString();
+}
 </script>
 
 <?php include('footer.php'); ?>
