@@ -2,7 +2,7 @@
 session_start();
 include('db.php');
 
-require_once __DIR__ . '/google-api/vendor/autoload.php';
+require_once __DIR__ . '/Kafu/vendor/autoload.php';
 
 $clientID = '483866428221-g4onr1815ej7pq3gige485c31efe1reu.apps.googleusercontent.com';
 $clientSecret = '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';
