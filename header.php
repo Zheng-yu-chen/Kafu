@@ -6,6 +6,25 @@
     <title>KaFu - 輔大學餐助手</title>
     <link rel="icon" href="icon/chef_icon.png" type="image/png">
     <link rel="stylesheet" href="style.css">
+    
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KaFu">
+    <link rel="apple-touch-icon" href="images/logo_192.png">
+
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('KaFu PWA 服務工作線程註冊成功！'))
+                .catch(err => console.log('KaFu PWA 註冊失敗：', err));
+        });
+    }
+    </script>
+
     <?php if (basename($_SERVER['PHP_SELF']) == 'profile.php'): ?>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <?php endif; ?>

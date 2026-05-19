@@ -31,7 +31,7 @@ try {
 }
 
 // ==========================================
-// 2. 撈取「菜單維護」所需的所有資料
+// 2. 撈取「菜單維護」所需的所有資料（已加入 fat, carbs）
 // ==========================================
 $restaurants = [];
 try {
@@ -45,6 +45,7 @@ try {
 
 $items = [];
 try {
+    // 💡 這裡假設你的資料庫 items 資料表欄位名稱為 fat 和 carbs
     $item_query = $conn->query("
         SELECT 
             i.item_id,
@@ -53,6 +54,8 @@ try {
             i.price,
             i.calories,
             i.protein,
+            i.fat,
+            i.carbs,
             c.cat_name AS c_name,
             c.r_id 
         FROM items i 
@@ -80,18 +83,40 @@ try {
     .content-section.active { display: block; }
 
     /* 菜單卡片與表格 */
-    .menu-card { background: white; border-radius: 12px; border: 1px solid #eee; overflow: hidden; }
+    .menu-card { 
+        background: white; 
+        border-radius: 12px; 
+        border: 1px solid #eee; 
+        overflow: hidden; 
+    }
+    /* 💡 新增：讓表格外層在螢幕太窄時可以橫向滾動，防止擠壓 */
+    #menu-list-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* 讓手機滑動更流暢 */
+    }
     .breadcrumb { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
     .breadcrumb-back { cursor: pointer; color: #002B5B; font-size: 18px; }
     
     .list-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f8f9fa; cursor: pointer; }
     .list-icon { width: 40px; height: 40px; background: #002B5B; color: white; border-radius: 10px; display: flex; justify-content: center; align-items: center; margin-right: 15px; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { padding: 12px; border-bottom: 1px solid #eee; color: #666; text-align: left; }
-    td { padding: 12px; border-bottom: 1px solid #f8f9fa; }
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        font-size: 13px; 
+        white-space: nowrap; /* 強制文字不換行 */
+    }
+    th {padding: 12px 8px; /* 稍微縮小左右間距 */ border-bottom: 1px solid #eee; color: #666; text-align: left; }
+    td { 
+        padding: 12px 8px; /* 稍微縮小左右間距 */
+        border-bottom: 1px solid #f8f9fa; 
+        vertical-align: middle; /* 讓內容垂直居中 */
+    }
     .td-val { color: #FF8C42; font-weight: bold; }
     .td-pro { color: #4CAF50; font-weight: bold; }
+    .td-fat { color: #E91E63; font-weight: bold; } /* 脂肪用粉紅/紅色系 */
+    .td-carbs { color: #FF9800; font-weight: bold; } /* 碳水用橘色系 */
     .action-icon { font-size: 16px; margin-right: 10px; cursor: pointer; }
 
     /* 編輯彈窗 Modal */
@@ -103,6 +128,7 @@ try {
     .modal-content {
         background: white; padding: 20px; border-radius: 12px;
         width: 90%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        max-height: 85vh; overflow-y: auto; /* 防止欄位變多超出螢幕 */
     }
     .form-group { margin-bottom: 15px; }
     .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
@@ -192,6 +218,14 @@ try {
             <label>蛋白質 (g)</label>
             <input type="number" step="0.1" id="edit-protein">
         </div>
+        <div class="form-group">
+            <label>脂肪 (g)</label>
+            <input type="number" step="0.1" id="edit-fat">
+        </div>
+        <div class="form-group">
+            <label>碳水化合物 (g)</label>
+            <input type="number" step="0.1" id="edit-carbs">
+        </div>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="closeModal()">取消</button>
             <button class="btn-save" onclick="saveEdit()">確定修改</button>
@@ -268,10 +302,11 @@ try {
         listContainer.innerHTML = html;
     }
 
+    // 💡 渲染表格時，加入脂肪與碳水的欄位
     function renderItems(r_id, resName) {
         breadcrumb.innerHTML = `<span class="breadcrumb-back" onclick="renderRestaurants('${selectedLoc}')">←</span> 餐廳 ❯ ${selectedLoc} ❯ ${resName}`;
         let filteredItems = items.filter(i => i.r_id == r_id);
-        let html = `<table><thead><tr><th>餐點</th><th>熱量</th><th>蛋白</th><th>價格</th><th>操作</th></tr></thead><tbody>`;
+        let html = `<table><thead><tr><th>餐點</th><th>熱量</th><th>蛋白</th><th>脂肪</th><th>碳水</th><th>價格</th><th>操作</th></tr></thead><tbody>`;
         
         filteredItems.forEach(item => {
             html += `
@@ -279,6 +314,8 @@ try {
                     <td><strong>${item.item_name}</strong></td>
                     <td class="td-val">${item.calories}</td>
                     <td class="td-pro">${item.protein}g</td>
+                    <td class="td-fat">${item.fat}g</td>
+                    <td class="td-carbs">${item.carbs}g</td>
                     <td>$${item.price}</td>
                     <td>
                         <div class="action-icons">
@@ -292,17 +329,21 @@ try {
         listContainer.innerHTML = html;
     }
 
+    // 💡 開啟彈窗時帶入脂肪與碳水的數值
     function openEditModal(item) {
         document.getElementById('edit-id').value = item.item_id;
         document.getElementById('edit-name').value = item.item_name;
         document.getElementById('edit-price').value = item.price;
         document.getElementById('edit-calories').value = item.calories;
         document.getElementById('edit-protein').value = item.protein;
+        document.getElementById('edit-fat').value = item.fat;
+        document.getElementById('edit-carbs').value = item.carbs;
         document.getElementById('editModal').style.display = 'flex';
     }
 
     function closeModal() { document.getElementById('editModal').style.display = 'none'; }
 
+    // 💡 傳送至後端 API 時加入 fat 與 carbs
     function saveEdit() {
         const formData = new FormData();
         formData.append('action', 'update');
@@ -311,6 +352,8 @@ try {
         formData.append('price', document.getElementById('edit-price').value);
         formData.append('calories', document.getElementById('edit-calories').value);
         formData.append('protein', document.getElementById('edit-protein').value);
+        formData.append('fat', document.getElementById('edit-fat').value);
+        formData.append('carbs', document.getElementById('edit-carbs').value);
 
         fetch('manage_menu_api.php', { method: 'POST', body: formData })
         .then(res => res.json())
