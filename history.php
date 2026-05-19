@@ -52,7 +52,7 @@ foreach ($logs_by_date as $date => $items) {
         $day_fat += $log['final_fat'] ?? 0;
         $day_carbs += $log['final_carbs'] ?? 0;
     }
-    $percent = ($goal_cal > 0) ? min(100, round(($day_cal / $goal_cal) * 100)) : 0;
+    $percent = ($goal_cal > 0) ? round(($day_cal / $goal_cal) * 100) : 0;
     $date_summaries[$date] = [
         'total_cal' => $day_cal,
         'total_pro' => $day_pro,
