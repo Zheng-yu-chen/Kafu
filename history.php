@@ -488,6 +488,7 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
             selectedTotalFat.textContent = '0 g';
             selectedTotalCarbs.textContent = '0 g';
             selectedProgress.style.width = '0%';
+            selectedProgress.style.backgroundColor = '#4CAF50'; // 重置為綠色
             historyItems.innerHTML = '<div class="item-card"><p style="color:#666; margin:0;">此日尚無飲食紀錄。</p></div>';
             return;
         }
@@ -500,7 +501,16 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
         selectedTotalPro.textContent = parseFloat(summary.total_pro).toFixed(1) + ' g';
         selectedTotalFat.textContent = parseFloat(summary.total_fat).toFixed(1) + ' g';
         selectedTotalCarbs.textContent = parseFloat(summary.total_carbs).toFixed(1) + ' g';
+        
+        // 💡 根據百分比設定進度條顏色：綠、橘、紅
+        let barColor = "#4CAF50"; // 預設綠色
+        if (summary.percent >= 80 && summary.percent <= 100) {
+            barColor = "#FF8C42"; // 橘色
+        } else if (summary.percent > 100) {
+            barColor = "#E53935"; // 紅色
+        }
         selectedProgress.style.width = summary.percent + '%';
+        selectedProgress.style.backgroundColor = barColor;
 
         historyItems.innerHTML = '';
         logsByDate[dateKey].forEach(log => {
