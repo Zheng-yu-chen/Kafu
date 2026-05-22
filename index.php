@@ -62,20 +62,17 @@ if ($is_advanced_search) {
     
 } else {
     // 模式 B：預設模式，顯示整間「餐廳」
-    $sql = "SELECT DISTINCT r.* FROM restaurants r
-            LEFT JOIN categories c ON r.r_id = c.r_id
-            LEFT JOIN items i ON c.c_id = i.c_id
-            WHERE 1=1";
+    // 💡 修正：因為只是要列出餐廳，不需要 JOIN categories 和 items，也不需要用餐點價格排序
+    $sql = "SELECT * FROM restaurants r WHERE 1=1";
 
     // 💡 地區過濾（心園、理園、輔園）
     if ($filter !== '全部') {
         $filter_safe = mysqli_real_escape_string($conn, $filter);
         $sql .= " AND r.location = '$filter_safe'";
     }
-    $safe_sort_by = ($sort_by === 'calories') ? 'i.calories' : 'i.price';
-    $safe_direction = ($sort_direction === 'desc') ? 'DESC' : 'ASC';
     
-    $sql .= " ORDER BY $safe_sort_by $safe_direction";
+    // 餐廳清單預設按照餐廳 ID (或名稱) 排序即可
+    $sql .= " ORDER BY r.r_id ASC";
 }
 
 $result = $conn->query($sql);
@@ -404,11 +401,11 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                 </span>
                 <div class="sort-options">
                     <button type="button" class="sort-toggle-btn <?php echo ($sort_by == 'price') ? 'active' : ''; ?>" onclick="handleSortToggle('price')">
-                        💰 價格 
+                        價格 
                         <?php if ($sort_by == 'price') echo ($sort_direction == 'desc') ? '↓' : '↑'; ?>
                     </button>
                     <button type="button" class="sort-toggle-btn <?php echo ($sort_by == 'calories') ? 'active' : ''; ?>" onclick="handleSortToggle('calories')">
-                        🔥 熱量 
+                        熱量 
                         <?php if ($sort_by == 'calories') echo ($sort_direction == 'desc') ? '↓' : '↑'; ?>
                     </button>
                 </div>
@@ -439,15 +436,9 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                         </div>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin-left: 10px;">
-                        <form action="add_to_tray.php" method="POST" style="margin: 0;">
-                            <input type="hidden" name="item_id" value="<?php echo $row['item_id']; ?>">
-                            <input type="hidden" name="eat_date" value="<?php echo date('Y-m-d'); ?>">
-                            <input type="hidden" name="meal_time" value="全天">
-                            <input type="hidden" name="quantity" value="1">
-                            <button type="submit" class="btn-solid-orange">
-                                加入托盤+
-                            </button>
-                        </form>
+                        <button type="button" class="btn-solid-orange" data-item-id="<?php echo $row['item_id']; ?>" data-item-name="<?php echo htmlspecialchars($row['item_name'], ENT_QUOTES); ?>" onclick="openTrayModal(this.dataset.itemId, this.dataset.itemName)">
+                            加入托盤+
+                        </button>
                         
                         <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="btn-solid-blue">
                             前往餐廳 ❯
@@ -481,29 +472,126 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     <?php endif; ?>
 </div>
 
-<div class="ai-fixed-wrapper" id="ai-wrapper">
-    <div id="ai-assistant-fab" onclick="toggleAssistant()">
-        <img src="images/fju.jpg" alt="AI助理"> 
-    </div>
-
-    <div id="assistant-card" class="assistant-card" style="width: 320px;">
-        <div class="assistant-header">
-            <span style="font-weight: bold;">輔大美食 AI 助手</span>
-            <span onclick="toggleAssistant()" style="cursor:pointer; opacity: 0.7;">✕</span>
-        </div>
-        
-        <div id="chat-box" style="height: 300px; overflow-y: auto; padding: 15px; background: #fdfdfd; display: flex; flex-direction: column; gap: 10px;">
-            <div style="background: #eee; padding: 8px 12px; border-radius: 10px; align-self: flex-start; max-width: 80%; font-size: 13px;">
-                嗨！我是輔大美食小助手，今天想吃點什麼？可以問我「心園有什麼好吃的？」或者「100元以內的午餐」。
+<div id="trayModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h2>加入托盤</h2>
+                <p id="modalItemName">餐點名稱</p>
             </div>
+            <button class="close-btn" onclick="closeTrayModal()">×</button>
         </div>
 
-        <div style="padding: 10px; border-top: 1px solid #eee; display: flex; gap: 5px;">
-            <input type="text" id="chat-input" placeholder="想吃什麼..." style="flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 5px 15px; font-size: 13px; outline: none;">
-            <button onclick="sendMessage()" style="background: var(--primary-orange, #FF8C42); color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; display: flex; align-items: center; justify-content: center;">➤</button>
-        </div>
+        <form action="add_to_tray.php" method="POST">
+            <input type="hidden" name="item_id" id="modalItemId" value="">
+
+            <div class="modal-body">
+                <?php if (isset($_SESSION['u_id'])): ?>
+                    <div class="form-group">
+                        <label>用餐日期</label>
+                        <div class="date-input-wrapper">
+                            <span class="date-icon">📅</span>
+                            <input type="date" name="eat_date" class="date-input" value="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>用餐時段</label>
+                        <div class="meal-grid">
+                            <label class="meal-option"><input type="radio" name="meal_time" value="早餐" required><span>早餐</span></label>
+                            <label class="meal-option"><input type="radio" name="meal_time" value="午餐"><span>午餐</span></label>
+                            <label class="meal-option"><input type="radio" name="meal_time" value="晚餐"><span>晚餐</span></label>
+                            <label class="meal-option"><input type="radio" name="meal_time" value="點心"><span>點心</span></label>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <input type="hidden" name="eat_date" value="<?php echo date('Y-m-d'); ?>">
+                    <input type="hidden" name="meal_time" value="全天">
+                    <div style="text-align:center; color:#888; padding: 10px 0 20px; font-size:14px; line-height: 1.5;">
+                        <span style="font-size:24px; display:block; margin-bottom:5px;">👣</span>
+                        您目前為訪客模式<br>將直接暫存於托盤中
+                    </div>
+                <?php endif; ?>
+
+                <div class="form-group">
+                    <label>餐點份數 / 數量</label>
+                    <div class="qty-control">
+                        <button type="button" class="qty-btn" onclick="changeQty(-1)">-</button>
+                        <input type="number" name="quantity" id="modalQty" value="1" min="1" max="99" class="qty-input">
+                        <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-tray-btn">確認加入</button>
+            </div>
+        </form>
     </div>
 </div>
+
+<style>
+.modal-overlay {
+    display: none ;
+    position: fixed !important;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 20000 !important;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.modal-box {
+    background: white;
+    width: 100%;
+    max-width: 320px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header {
+    background-color: var(--fujen-blue, #002B5B);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+.modal-header h2 { margin: 0; font-size: 20px; }
+.modal-header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; font-weight: normal; }
+.close-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; }
+.modal-body { padding: 20px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-size: 14px; color: #333; margin-bottom: 8px; font-weight: bold; }
+.date-input-wrapper { position: relative; }
+.date-icon { position: absolute; left: 12px; top: 12px; font-size: 16px; color: #555; pointer-events: none; }
+.date-input { width: 100%; padding: 12px 12px 12px 35px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+.meal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.meal-option { display: block; }
+.meal-option input { display: none; }
+.meal-option span { display: block; text-align: center; padding: 12px; background: #eee; color: #333; border-radius: 8px; font-size: 14px; cursor: pointer; box-sizing: border-box; border: 1px solid transparent; transition: transform 0.1s ease, background 0.2s, color 0.2s; }
+.meal-option span:active { transform: scale(0.94); }
+.meal-option input:checked + span { background: var(--fujen-blue, #002B5B); color: #fff; font-weight: bold; }
+.qty-control { display: flex; align-items: center; gap: 10px; }
+.qty-btn { width: 45px; height: 45px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 8px; font-size: 20px; cursor: pointer; transition: 0.2s; }
+.qty-btn:active { background: #eee; }
+.qty-input { flex: 1; text-align: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+.submit-tray-btn {
+    width: 100%;
+    background-color: #E6762D;
+    color: white;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.3s, transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 4px 0 #B35C22;
+}
+.submit-tray-btn:hover { background-color: #FF8336; }
+</style>
 
 <script>
 async function sendMessage() {
@@ -642,6 +730,41 @@ function handleSortToggle(targetField) {
     urlParams.set('sort_direction', nextDirection);
     window.location.href = window.location.pathname + '?' + urlParams.toString();
 }
+
+function openTrayModal(itemId, itemName) {
+    console.log('openTrayModal', itemId, itemName);
+    const modal = document.getElementById('trayModal');
+    const itemIdInput = document.getElementById('modalItemId');
+    const itemNameLabel = document.getElementById('modalItemName');
+    const qtyInput = document.getElementById('modalQty');
+    if (!modal || !itemIdInput || !itemNameLabel || !qtyInput) return;
+
+    itemIdInput.value = itemId;
+    itemNameLabel.innerText = itemName;
+    qtyInput.value = 1;
+    modal.style.display = 'flex';
+}
+
+function changeQty(amt) {
+    const qtyInput = document.getElementById('modalQty');
+    if (!qtyInput) return;
+    let currentVal = parseInt(qtyInput.value, 10) || 1;
+    let newVal = currentVal + amt;
+    if (newVal < 1) newVal = 1;
+    qtyInput.value = newVal;
+}
+
+function closeTrayModal() {
+    const modal = document.getElementById('trayModal');
+    if (modal) modal.style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('trayModal');
+    if (modal && e.target === modal) {
+        closeTrayModal();
+    }
+});
 </script>
 
 <?php include('footer.php'); ?>
