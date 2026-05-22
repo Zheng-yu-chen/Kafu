@@ -29,8 +29,21 @@ $stmt_comments = $conn->prepare("
 $stmt_comments->bind_param("i", $r_id);
 $stmt_comments->execute();
 $comments_result = $stmt_comments->get_result();
+
+// 檢查是否為當前餐廳的店家
+$is_current_shop_owner = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 2 && isset($_SESSION['r_id']) && $_SESSION['r_id'] == $r_id;
+
 // 店家回覆評論
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
+    
+    // 後端權限驗證：只有目前該餐廳的店家允許提交回覆
+    if (!$is_current_shop_owner) {
+        echo "<script>
+            alert('您沒有權限回覆此餐廳的評論！');
+            window.location.href = window.location.href;
+        </script>";
+        exit;
+    }
 
     $com_id = intval($_POST['com_id']);
     $reply_content = trim($_POST['reply_content']);
@@ -125,7 +138,7 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 
     .filter-control-bar {
         display: flex;
-        gap: 8px; /* 稍微縮小間距以容納三個元件 */
+        gap: 8px; 
         margin-bottom: 20px;
     }
     .search-input-wrapper {
@@ -283,46 +296,41 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                             <?php echo nl2br(htmlspecialchars($com['content'])); ?>
                         </p>
 
-                        <?php if (!empty($com['com_img'])): ?>
-                            <?php if (!empty($com['reply_content'])): ?>
-
+                        <?php if (!empty($com['reply_content'])): ?>
+                            <div style="
+                                margin-top:12px;
+                                background:#f5f7fb;
+                                border-left:4px solid #002B5B;
+                                padding:10px 12px;
+                                border-radius:8px;
+                            ">
                                 <div style="
-                                    margin-top:12px;
-                                    background:#f5f7fb;
-                                    border-left:4px solid #002B5B;
-                                    padding:10px 12px;
-                                    border-radius:8px;
+                                    font-size:13px;
+                                    font-weight:bold;
+                                    color:#002B5B;
+                                    margin-bottom:5px;
                                 ">
-
-                                    <div style="
-                                        font-size:13px;
-                                        font-weight:bold;
-                                        color:#002B5B;
-                                        margin-bottom:5px;
-                                    ">
-                                        店家回覆
-                                    </div>
-
-                                    <div style="
-                                        font-size:14px;
-                                        color:#444;
-                                        line-height:1.5;
-                                    ">
-                                        <?php echo nl2br(htmlspecialchars($com['reply_content'])); ?>
-                                    </div>
-
-                                    <div style="
-                                        text-align:right;
-                                        margin-top:5px;
-                                    ">
-                                        <small style="color:#aaa;">
-                                            <?php echo $com['reply_created_at']; ?>
-                                        </small>
-                                    </div>
-
+                                    店家回覆
                                 </div>
+                                <div style="
+                                    font-size:14px;
+                                    color:#444;
+                                    line-height:1.5;
+                                ">
+                                    <?php echo nl2br(htmlspecialchars($com['reply_content'])); ?>
+                                </div>
+                                <div style="
+                                    text-align:right;
+                                    margin-top:5px;
+                                ">
+                                    <small style="color:#aaa;">
+                                        <?php echo $com['reply_created_at']; ?>
+                                    </small>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
-                            <?php endif; ?>
+                        <?php if (!empty($com['com_img'])): ?>
                             <div style="margin: 10px 0;">
                                 <img src="food/<?php echo htmlspecialchars($com['com_img']); ?>" 
                                      class="comment-img-thumb" 
@@ -330,66 +338,64 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                                      alt="用餐照片">
                             </div>
                         <?php endif; ?>
-                        <!-- 店家回覆區 -->
-                        <div style="margin-top: 12px;">
 
-                            <!-- 回覆按鈕 -->
-                            <button 
-                                onclick="toggleReplyBox(<?php echo $com['com_id']; ?>)"
-                                style="
-                                    background:#002B5B;
-                                    color:white;
-                                    border:none;
-                                    padding:6px 14px;
-                                    border-radius:20px;
-                                    cursor:pointer;
-                                    font-size:13px;
-                                ">
-                                回覆
-                            </button>
+                        <?php if ($is_current_shop_owner): ?>
+                            <div style="margin-top: 12px;">
+                                <button 
+                                    onclick="toggleReplyBox(<?php echo $com['com_id']; ?>)"
+                                    style="
+                                        background:#002B5B;
+                                        color:white;
+                                        border:none;
+                                        padding:6px 14px;
+                                        border-radius:20px;
+                                        cursor:pointer;
+                                        font-size:13px;
+                                    ">
+                                    回覆
+                                </button>
 
-                            <!-- 回覆輸入框 -->
-                            <div id="reply-box-<?php echo $com['com_id']; ?>" 
-                                style="display:none; margin-top:10px;">
+                                <div id="reply-box-<?php echo $com['com_id']; ?>" 
+                                    style="display:none; margin-top:10px;">
 
-                                <form method="POST">
+                                    <form method="POST">
+                                        <input type="hidden" 
+                                            name="com_id" 
+                                            value="<?php echo $com['com_id']; ?>">
 
-                                    <input type="hidden" 
-                                        name="com_id" 
-                                        value="<?php echo $com['com_id']; ?>">
+                                        <textarea 
+                                            name="reply_content"
+                                            rows="3"
+                                            placeholder="輸入回覆內容..."
+                                            style="
+                                                width:100%;
+                                                padding:10px;
+                                                border-radius:10px;
+                                                border:1px solid #ddd;
+                                                resize:none;
+                                                box-sizing:border-box;
+                                            "
+                                            required></textarea>
 
-                                    <textarea 
-                                        name="reply_content"
-                                        rows="3"
-                                        placeholder="輸入回覆內容..."
-                                        style="
-                                            width:100%;
-                                            padding:10px;
-                                            border-radius:10px;
-                                            border:1px solid #ddd;
-                                            resize:none;
-                                            box-sizing:border-box;
-                                        "
-                                        required></textarea>
+                                        <button 
+                                            type="submit"
+                                            name="reply_submit"
+                                            style="
+                                                margin-top:8px;
+                                                background:#FF8C42;
+                                                color:white;
+                                                border:none;
+                                                padding:8px 16px;
+                                                border-radius:20px;
+                                                cursor:pointer;
+                                            ">
+                                            送出回覆
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>        
+                        <?php endif; ?>
 
-                                    <button 
-                                        type="submit"
-                                        name="reply_submit"
-                                        style="
-                                            margin-top:8px;
-                                            background:#FF8C42;
-                                            color:white;
-                                            border:none;
-                                            padding:8px 16px;
-                                            border-radius:20px;
-                                            cursor:pointer;
-                                        ">
-                                        送出回覆
-                                    </button>
-
-                                </form>
-                            </div>
-                        </div>        
                         <div style="text-align: right;">
                             <small style="color:#bbb; font-size: 11px;"><?php echo $com['created_at']; ?></small>
                         </div>
@@ -418,42 +424,34 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
     function filterAndSortComments() {
         const keyword = document.getElementById('commentSearch').value.toLowerCase().trim();
         const selectedStar = document.getElementById('commentFilterStars').value; 
-        const sortMode = document.getElementById('commentSort').value; // 最新、有圖片、一個月、一個禮拜
+        const sortMode = document.getElementById('commentSort').value; 
         const container = document.getElementById('commentsContainer');
         const cards = Array.from(container.getElementsByClassName('comment-card-item'));
 
         if (cards.length === 0) return;
 
-        // 🎯 1. 取得網頁執行的當前時間戳記，用來計算時間範圍
         const nowTs = Math.floor(Date.now() / 1000);
-        const oneWeekSec = 7 * 24 * 60 * 60;   // 7天的總秒數
-        const oneMonthSec = 30 * 24 * 60 * 60; // 30天的總秒數
+        const oneWeekSec = 7 * 24 * 60 * 60;   
+        const oneMonthSec = 30 * 24 * 60 * 60; 
 
-        // 🎯 2. 四重連動過濾（關鍵字 + 星級過濾 + 時間範圍過濾 + 是否帶有圖片）
         cards.forEach(card => {
             const text = card.getAttribute('data-text');
             const rating = card.getAttribute('data-rating');
             const hasImg = card.getAttribute('data-has-image');
             const timeTs = parseInt(card.getAttribute('data-time'), 10); 
             
-            // 條件 A：關鍵字比對
             const matchesKeyword = text.includes(keyword);
-            
-            // 條件 B：星級比對
             const matchesStar = (selectedStar === 'all' || rating === selectedStar);
             
-            // 條件 C：時間區段範圍與餐點圖片篩選邏輯組合
             let matchesCondition = true;
             if (sortMode === 'one_week') {
                 matchesCondition = (nowTs - timeTs <= oneWeekSec);
             } else if (sortMode === 'one_month') {
                 matchesCondition = (nowTs - timeTs <= oneMonthSec);
             } else if (sortMode === 'has_image') {
-                // 🎯 如果選中「有餐點圖片」，卡片的屬性必須為 'true' 才能通過
                 matchesCondition = (hasImg === 'true');
             }
 
-            // 四個條件必須同時滿足時顯示，否則隱藏
             if (matchesKeyword && matchesStar && matchesCondition) {
                 card.classList.remove('hidden');
             } else {
@@ -461,7 +459,6 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
             }
         });
 
-        // 🎯 3. 排序執行：預設一律採由新到舊排序
         cards.sort((a, b) => {
             return b.getAttribute('data-time') - a.getAttribute('data-time'); 
         });
@@ -514,16 +511,15 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
             alert('網路錯誤，無法刪除評論。');
         });
     }
+
     function toggleReplyBox(comId) {
-
-    const box = document.getElementById('reply-box-' + comId);
-
-    if (box.style.display === 'none') {
-        box.style.display = 'block';
-    } else {
-        box.style.display = 'none';
+        const box = document.getElementById('reply-box-' + comId);
+        if (box.style.display === 'none') {
+            box.style.display = 'block';
+        } else {
+            box.style.display = 'none';
+        }
     }
-}
 </script>
 
 <?php include('footer.php'); ?>
