@@ -160,3 +160,65 @@ body {
     padding: 20px;
     z-index: 5;
 }
+
+/* --- 底部導覽列 AI 助理按鈕專用 --- */
+.ai-nav-item {
+    position: relative;
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end; 
+    text-decoration: none;
+    cursor: pointer;
+    transform: translateY(-20px); /* 🌟 關鍵：將整個按鈕往上拉出導覽列 */
+}
+
+/* 🌟 關鍵：製造一個「白色外環」，做出切開導覽列的立體感 */
+.ai-nav-icon-ring {
+    width: 66px;
+    height: 66px;
+    background-color: #ffffff; /* 對齊你導覽列的背景顏色 */
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.08); /* 淡淡的上方陰影 */
+    margin-bottom: 4px;
+}
+
+/* AI 圖片本身 */
+.ai-nav-icon-ring img {
+    width: 58px;  
+    height: 58px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 4px 8px rgba(0, 43, 91, 0.25); /* 圖示本身的立體感 */
+    transition: transform 0.2s ease;
+}
+
+/* 點擊時的小動畫 */
+.ai-nav-icon-ring img:active {
+    transform: scale(0.92);
+}
+
+.ai-nav-text {
+    font-size: 11px;
+    color: var(--fujen-blue, #002B5B);
+    font-weight: bold;
+}
+
+/* --- 修改對話框的位置，改為從正中央上方彈出 --- */
+.assistant-card {
+    position: fixed !important; 
+    bottom: 90px; /* 避開底部導覽列的高度 */
+    left: 50%;
+    transform: translateX(-50%); /* 完美置中 */
+    width: 90%;
+    max-width: 360px;
+    background: white; 
+    border-radius: 20px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+    z-index: 10000; 
+    display: none; 
+}
