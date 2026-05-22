@@ -29,7 +29,31 @@ $stmt_comments = $conn->prepare("
 $stmt_comments->bind_param("i", $r_id);
 $stmt_comments->execute();
 $comments_result = $stmt_comments->get_result();
+// 店家回覆評論
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
 
+    $com_id = intval($_POST['com_id']);
+    $reply_content = trim($_POST['reply_content']);
+
+    if (!empty($reply_content)) {
+
+        $stmt_reply = $conn->prepare("
+            UPDATE comments
+            SET reply_content = ?, 
+                reply_created_at = NOW()
+            WHERE com_id = ?
+        ");
+
+        $stmt_reply->bind_param("si", $reply_content, $com_id);
+        $stmt_reply->execute();
+
+        echo "<script>
+            alert('回覆成功！');
+            window.location.href = window.location.href;
+        </script>";
+        exit;
+    }
+}
 $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 ?>
 
@@ -260,6 +284,45 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                         </p>
 
                         <?php if (!empty($com['com_img'])): ?>
+                            <?php if (!empty($com['reply_content'])): ?>
+
+                                <div style="
+                                    margin-top:12px;
+                                    background:#f5f7fb;
+                                    border-left:4px solid #002B5B;
+                                    padding:10px 12px;
+                                    border-radius:8px;
+                                ">
+
+                                    <div style="
+                                        font-size:13px;
+                                        font-weight:bold;
+                                        color:#002B5B;
+                                        margin-bottom:5px;
+                                    ">
+                                        店家回覆
+                                    </div>
+
+                                    <div style="
+                                        font-size:14px;
+                                        color:#444;
+                                        line-height:1.5;
+                                    ">
+                                        <?php echo nl2br(htmlspecialchars($com['reply_content'])); ?>
+                                    </div>
+
+                                    <div style="
+                                        text-align:right;
+                                        margin-top:5px;
+                                    ">
+                                        <small style="color:#aaa;">
+                                            <?php echo $com['reply_created_at']; ?>
+                                        </small>
+                                    </div>
+
+                                </div>
+
+                            <?php endif; ?>
                             <div style="margin: 10px 0;">
                                 <img src="food/<?php echo htmlspecialchars($com['com_img']); ?>" 
                                      class="comment-img-thumb" 
@@ -267,7 +330,66 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                                      alt="用餐照片">
                             </div>
                         <?php endif; ?>
+                        <!-- 店家回覆區 -->
+                        <div style="margin-top: 12px;">
 
+                            <!-- 回覆按鈕 -->
+                            <button 
+                                onclick="toggleReplyBox(<?php echo $com['com_id']; ?>)"
+                                style="
+                                    background:#002B5B;
+                                    color:white;
+                                    border:none;
+                                    padding:6px 14px;
+                                    border-radius:20px;
+                                    cursor:pointer;
+                                    font-size:13px;
+                                ">
+                                回覆
+                            </button>
+
+                            <!-- 回覆輸入框 -->
+                            <div id="reply-box-<?php echo $com['com_id']; ?>" 
+                                style="display:none; margin-top:10px;">
+
+                                <form method="POST">
+
+                                    <input type="hidden" 
+                                        name="com_id" 
+                                        value="<?php echo $com['com_id']; ?>">
+
+                                    <textarea 
+                                        name="reply_content"
+                                        rows="3"
+                                        placeholder="輸入回覆內容..."
+                                        style="
+                                            width:100%;
+                                            padding:10px;
+                                            border-radius:10px;
+                                            border:1px solid #ddd;
+                                            resize:none;
+                                            box-sizing:border-box;
+                                        "
+                                        required></textarea>
+
+                                    <button 
+                                        type="submit"
+                                        name="reply_submit"
+                                        style="
+                                            margin-top:8px;
+                                            background:#FF8C42;
+                                            color:white;
+                                            border:none;
+                                            padding:8px 16px;
+                                            border-radius:20px;
+                                            cursor:pointer;
+                                        ">
+                                        送出回覆
+                                    </button>
+
+                                </form>
+                            </div>
+                        </div>        
                         <div style="text-align: right;">
                             <small style="color:#bbb; font-size: 11px;"><?php echo $com['created_at']; ?></small>
                         </div>
@@ -392,6 +514,16 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
             alert('網路錯誤，無法刪除評論。');
         });
     }
+    function toggleReplyBox(comId) {
+
+    const box = document.getElementById('reply-box-' + comId);
+
+    if (box.style.display === 'none') {
+        box.style.display = 'block';
+    } else {
+        box.style.display = 'none';
+    }
+}
 </script>
 
 <?php include('footer.php'); ?>
