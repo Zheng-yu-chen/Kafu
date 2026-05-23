@@ -11,18 +11,30 @@ if (!isset($_SESSION['role_id']) || ($_SESSION['role_id'] != 2 && $_SESSION['rol
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-// 預設抓取資料庫第一家餐廳 (r_id = 1) 作為示範
-$store_id = 1; 
-$store_name = "澳門華記";
+// 💡 動態辨識登入的身分
+if ($_SESSION['role_id'] == 2) {
+    // 如果是店家，直接從 Session 抓取他專屬的餐廳 ID
+    if (!isset($_SESSION['r_id'])) {
+        echo "<script>alert('帳號設定異常，未綁定餐廳！'); window.location.href='login.php';</script>";
+        exit();
+    }
+    $store_id = intval($_SESSION['r_id']); 
+} else {
+    // 如果是最高管理員 (role_id = 1)，預設給他看 ID 1 的餐廳 (之後你可以做個下拉選單讓管理員切換)
+    $store_id = isset($_GET['r_id']) ? intval($_GET['r_id']) : 1; 
+}
+
+// 預設餐廳名稱防呆
+$store_name = "未知餐廳";
 
 try {
-    // 嘗試從資料庫抓取真實餐廳名稱
+    // 嘗試從資料庫抓取該登入店家的真實餐廳名稱（預防 SQL 注入，使用 intval 轉型過的變數）
     $res_query = $conn->query("SELECT name FROM restaurants WHERE r_id = $store_id");
     if ($res_query && $res_query->num_rows > 0) {
         $store_name = $res_query->fetch_assoc()['name'];
     }
 
-    // 💡 從資料庫抓取這家餐廳的「真實最新評論」
+    // 💡 從資料庫抓取「這家特定餐廳」的真實最新評論
     $sql_reviews = "SELECT c.*, i.item_name, a.name AS reviewer_name 
                     FROM comments c
                     JOIN items i ON c.item_id = i.item_id
@@ -33,7 +45,8 @@ try {
     $reviews_result = $conn->query($sql_reviews);
 
 } catch (mysqli_sql_exception $e) {
-    // 若出錯則略過
+    // 若出錯的友善處理，不洩漏資料庫錯誤訊息
+    $error_msg = "資料載入失敗，請稍後再試。";
 }
 ?>
 
@@ -90,7 +103,7 @@ try {
     .review-stars { color: #FFC107; font-size: 12px; }
     .review-text { font-size: 13px; color: #555; line-height: 1.5; margin: 0; }
 
-    /* 💡 統一的登出按鈕樣式 */
+    /* 統一的登出按鈕樣式 */
     .logout-section { text-align: center; margin: 30px 0 100px; }
     .logout-btn {
         display: inline-block;
@@ -110,9 +123,11 @@ try {
 
 <div class="store-header">
     <h1>店家營運儀表板</h1>
+    <!-- 這裡會顯示目前登入店家的真實店名 -->
     <p><?php echo htmlspecialchars($store_name); ?></p>
     
     <div class="stats-container">
+        <!-- 提醒：這裡的數據目前也是寫死的，未來建議透過 SQL 加上 AVG(rating) 與 COUNT() 來動態抓取 -->
         <div class="stat-box"><h4>平均評分</h4><div class="num">4.7</div><div class="trend">↑ 0.1 vs 上週</div></div>
         <div class="stat-box"><h4>本週評論</h4><div class="num">87</div><div class="trend">↑ 12 vs 上週</div></div>
         <div class="stat-box"><h4>本週銷量</h4><div class="num">534</div><div class="trend">↑ 8% vs 上週</div></div>
@@ -127,6 +142,7 @@ try {
 <div class="dashboard-section">
     <div class="section-title"><span style="color:#FF8C42">⭐</span> 熱門餐點排行</div>
     <div class="ranking-list">
+        <!-- 提醒：這裡目前的資料是前端靜態呈現，後續可改成與該 store_id 綁定的熱門排行 -->
         <div class="ranking-item">
             <div class="rank-left"><div class="rank-badge">1</div><div class="rank-info"><h5>華記招牌飯</h5><p>本週銷售 156 份</p></div></div>
             <div class="rank-score">★ 4.8</div>
@@ -163,7 +179,9 @@ try {
             </div>
         <?php endwhile; ?>
     <?php else: ?>
-        <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">目前尚無評價資料</p>
+        <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">
+            <?php echo isset($error_msg) ? $error_msg : '目前尚無評價資料'; ?>
+        </p>
     <?php endif; ?>
 </div>
 
