@@ -17,16 +17,20 @@ include('header.php');
             flex-direction: column;
             height: calc(100vh - 120px); /* 扣除頂部 header 與底部 footer 的高度 */
             background-color: #f8f9fa;
+            position: relative;
+            overflow: hidden; /* 💡 確保外層容器不亂包 */
         }
 
         /* 聊天歷史紀錄區塊 */
         .chat-main-box {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 20px 20px 40px 20px; /* 關鍵修正：增加底部 padding，確保對話滾動時不會被輸入框擋住 */
             display: flex;
             flex-direction: column;
             gap: 12px;
+            /* 💡 關鍵修正：強迫內層盒子在 Flex 布局下最大高度不能超出剩餘空間，才能順利觸發滾動條 */
+            max-height: calc(100% - 65px); 
         }
 
         /* 底部對話輸入欄區塊 */
@@ -37,8 +41,10 @@ include('header.php');
             display: flex;
             gap: 10px;
             align-items: center;
-            position: sticky;
-            bottom: 65px; /* 剛好黏在底部導覽列上方 */
+            position: relative; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05); /* 加點微陰影，更有質感 */
+            height: 65px; /* 💡 固定高度，方便內層精準計算滾動範圍 */
+            box-sizing: border-box;
         }
 
         .chat-styled-input {
@@ -76,7 +82,7 @@ include('header.php');
             transform: scale(0.95);
         }
 
-        /* 訊息泡泡樣式升級 */
+        /* 訊息泡泡樣式 */
         .bubble {
             padding: 12px 16px;
             border-radius: 16px;
@@ -85,6 +91,8 @@ include('header.php');
             line-height: 1.5;
             word-break: break-all;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            white-space: pre-wrap; /* 保留 AI 回傳訊息中的所有斷行 */
+            height: auto; /* 💡 確保高度跟著文字動態長高 */
         }
         
         .bubble.user {
@@ -112,13 +120,7 @@ include('header.php');
 <div class="chat-page-container">
     
     <div id="chat-box" class="chat-main-box">
-        <div class="bubble ai">
-            嗨！我是輔大美食小助手 🧑‍🍳，今天想在校園裡吃點什麼呢？<br><br>
-            你可以試著問我：<br>
-            • 「心園有什麼推薦的美味餐點？」<br>
-            • 「幫我找 100 元以內的飽足下午餐」<br>
-            • 「熱量低於 500 大卡的健康午餐有哪些？」
-        </div>
+        <div class="bubble ai">嗨！我是輔大美食小助手 🧑‍🍳，今天想在校園裡吃點什麼呢？<br><br>今天天氣真好，要不要去心園吃個香噴噴的鬆餅，或是去理園來份飽足的便當呢？<br>👉 <a href="index.php" style="color: #FF8C42; font-weight: bold; text-decoration: underline;">[點我查看校園所有店家]</a><br><br>你也可以直接問我：<br>• 「心園有什麼推薦的美味餐點？」<br>• 「幫我找 100 元以內的飽足下午餐」<br>• 「熱量低於 500 大卡的健康午餐有哪些？」</div>
     </div>
 
     <div class="chat-input-bar">
@@ -129,6 +131,38 @@ include('header.php');
 </div>
 
 <script>
+// 💡 終極安全版：完全棄用脆弱的正則表達式，改用最穩定的字串安全替換
+function formatAIResponse(text) {
+    if (!text) return '';
+    try {
+        // 1. 如果文字包含 ** 粗體，直接用簡單的字串分割替換，安全無毒
+        let cleanText = text;
+        if (cleanText.includes('**')) {
+            let parts = cleanText.split('**');
+            for (let i = 1; i < parts.length; i += 2) {
+                if (parts[i]) {
+                    parts[i] = '<strong>' + parts[i] + '</strong>';
+                }
+            }
+            cleanText = parts.join('');
+        }
+        
+        // 2. 徹底根治 Bug：把容易造成前端混淆或排版壞掉的列表星號（*），全部替換成安全的圓點（•）
+        cleanText = cleanText.split('\n').map(line => {
+            // 如果這行是以星號開頭，就把它換成圓點
+            if (line.trim().startsWith('*')) {
+                return line.replace('*', '•');
+            }
+            return line;
+        }).join('\n');
+        
+        return cleanText;
+    } catch (err) {
+        console.error("排版解析失敗，輸出原始文字:", err);
+        return text; // 萬一出錯，至少完整吐出文字，絕不斷尾
+    }
+}
+
 async function sendMessage() {
     const chatInput = document.getElementById('chat-input');
     const chatBox = document.getElementById('chat-box');
@@ -155,7 +189,8 @@ async function sendMessage() {
         const rawText = await response.text();
         try {
             const data = JSON.parse(rawText);
-            document.getElementById(loadingId).innerText = data.reply || "小助手開小差了，請稍後再試。";
+            const formattedReply = formatAIResponse(data.reply || "小助手開小差了，請稍後再試。");
+            document.getElementById(loadingId).innerHTML = formattedReply; // 改用 innerHTML 以支援粗體排版
         } catch (jsonErr) {
             console.error("PHP 回傳內容異常:", rawText);
             document.getElementById(loadingId).innerText = "小助手思緒有點混亂，請檢查後端設定。";
@@ -164,6 +199,9 @@ async function sendMessage() {
         console.error("Fetch 錯誤:", e);
         document.getElementById(loadingId).innerText = "通訊失敗，請檢查網路連線 🥺";
     }
+    
+    // 每次收到訊息後，再次確保滾動到最底部
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 function appendMessage(role, text, id = '') {
@@ -173,7 +211,7 @@ function appendMessage(role, text, id = '') {
     msgDiv.className = `bubble ${role}`;
     if (id) msgDiv.id = id;
     
-    msgDiv.innerText = text;
+    msgDiv.innerHTML = formatAIResponse(text); // 統一支援粗體轉換
     chatBox.appendChild(msgDiv);
     
     // 自動捲動到最新對話訊息
