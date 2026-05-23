@@ -16,6 +16,21 @@ if (!$res_info) {
     exit;
 }
 
+// 🎯 撈取這家餐廳的所有餐點品項，供外部 update_comments.php 檔案的選單使用
+$all_items = [];
+$stmt_all_items = $conn->prepare("
+    SELECT i.item_id, i.name 
+    FROM items i 
+    JOIN categories cat ON i.c_id = cat.c_id 
+    WHERE cat.r_id = ?
+");
+$stmt_all_items->bind_param("i", $r_id);
+$stmt_all_items->execute();
+$items_res = $stmt_all_items->get_result();
+while ($row = $items_res->fetch_assoc()) {
+    $all_items[] = $row;
+}
+
 // 2. 撈取屬於該餐廳所有餐點的詳細評論，並顯示餐點名稱
 $stmt_comments = $conn->prepare("
     SELECT c.*, i.name as item_name, a.name as user_name, a.user_photo 
@@ -23,17 +38,19 @@ $stmt_comments = $conn->prepare("
     JOIN items i ON c.item_id = i.item_id 
     JOIN categories cat ON i.c_id = cat.c_id 
     LEFT JOIN accounts a ON c.u_id = a.u_id 
-    WHERE cat.r_id = ? AND c.status = 1 
+    WHERE cat.r_id = ? 
     ORDER BY c.created_at DESC
 ");
 $stmt_comments->bind_param("i", $r_id);
 $stmt_comments->execute();
 $comments_result = $stmt_comments->get_result();
 
-// 檢查是否為當前餐廳的店家
+// 檢查身分與權限變數
 $is_current_shop_owner = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 2 && isset($_SESSION['r_id']) && $_SESSION['r_id'] == $r_id;
+$is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
+$current_user_id = $_SESSION['u_id'] ?? null;
 
-// 店家回覆評論
+// 店家回覆評論處理邏輯
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
     
     // 後端權限驗證：只有目前該餐廳的店家允許提交回覆
@@ -49,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
     $reply_content = trim($_POST['reply_content']);
 
     if (!empty($reply_content)) {
-
         $stmt_reply = $conn->prepare("
             UPDATE comments
             SET reply_content = ?, 
@@ -67,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
         exit;
     }
 }
-$is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 ?>
 
 <style>
@@ -221,6 +236,13 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
     }
 
     .hidden { display: none !important; }
+
+    .user-maintenance-bar { display: inline-flex; gap: 8px; margin-left: 10px; }
+    .btn-user-action { background: none; border: none; font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 5px; font-weight: bold; }
+    .btn-user-edit-text { color: #002B5B; background: rgba(0, 43, 91, 0.05); display: inline-flex; align-items: center; gap: 3px; }
+    .btn-user-edit-text:hover { background: rgba(0, 43, 91, 0.12); }
+    .btn-user-delete-text { color: #D32F2F; background: rgba(211, 47, 47, 0.05); display: inline-flex; align-items: center; gap: 3px; }
+    .btn-user-delete-text:hover { background: rgba(211, 47, 47, 0.12); }
 </style>
 
 <div style="padding: 20px; max-width: 600px; margin: 0 auto; padding-bottom: 100px;">
@@ -264,6 +286,7 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
             <?php while($com = $comments_result->fetch_assoc()): ?>
                 
                 <div class="comment-card-item" 
+                     id="comment-card-<?php echo $com['com_id']; ?>"
                      data-rating="<?php echo $com['rating']; ?>"
                      data-time="<?php echo strtotime($com['created_at']); ?>"
                      data-has-image="<?php echo !empty($com['com_img']) ? 'true' : 'false'; ?>"
@@ -288,11 +311,11 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                         </div>
                         
                         <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 4px;">
-                            <strong style="font-size: 16px; color: #333;"><?php echo htmlspecialchars($com['item_name']); ?></strong>
-                            <span style="color:#FF8C42; font-weight: bold;">★ <?php echo $com['rating']; ?></span>
+                            <strong id="comment-item-name-<?php echo $com['com_id']; ?>" style="font-size: 16px; color: #333;"><?php echo htmlspecialchars($com['item_name']); ?></strong>
+                            <span style="color:#FF8C42; font-weight: bold;">★ <span id="comment-rating-num-<?php echo $com['com_id']; ?>"><?php echo $com['rating']; ?></span></span>
                         </div>
 
-                        <p style="margin:4px 0 12px; color:#444; font-size: 15px; line-height: 1.5;">
+                        <p id="comment-text-content-<?php echo $com['com_id']; ?>" style="margin:4px 0 12px; color:#444; font-size: 15px; line-height: 1.5;">
                             <?php echo nl2br(htmlspecialchars($com['content'])); ?>
                         </p>
 
@@ -304,25 +327,13 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                                 padding:10px 12px;
                                 border-radius:8px;
                             ">
-                                <div style="
-                                    font-size:13px;
-                                    font-weight:bold;
-                                    color:#002B5B;
-                                    margin-bottom:5px;
-                                ">
+                                <div style="font-size:13px; font-weight:bold; color:#002B5B; margin-bottom:5px;">
                                     店家回覆
                                 </div>
-                                <div style="
-                                    font-size:14px;
-                                    color:#444;
-                                    line-height:1.5;
-                                ">
+                                <div style="font-size:14px; color:#444; line-height:1.5;">
                                     <?php echo nl2br(htmlspecialchars($com['reply_content'])); ?>
                                 </div>
-                                <div style="
-                                    text-align:right;
-                                    margin-top:5px;
-                                ">
+                                <div style="text-align:right; margin-top:5px;">
                                     <small style="color:#aaa;">
                                         <?php echo $com['reply_created_at']; ?>
                                     </small>
@@ -330,14 +341,33 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                             </div>
                         <?php endif; ?>
 
-                        <?php if (!empty($com['com_img'])): ?>
-                            <div style="margin: 10px 0;">
-                                <img src="food/<?php echo htmlspecialchars($com['com_img']); ?>" 
-                                     class="comment-img-thumb" 
-                                     onclick="openFullImage(this.src)"
-                                     alt="用餐照片">
-                            </div>
-                        <?php endif; ?>
+                        <div id="comment-image-block-<?php echo $com['com_id']; ?>" style="margin: 10px 0;">
+                            <?php if (!empty($com['com_img'])): ?>
+                                <img src="food/<?php echo htmlspecialchars($com['com_img']); ?>" class="comment-img-thumb" onclick="openFullImage(this.src)" alt="用餐照片">
+                            <?php endif; ?>
+                        </div>
+
+                        <div style="text-align: right; display: flex; justify-content: space-between; align-items: center;">
+                            <small id="comment-time-box-<?php echo $com['com_id']; ?>" style="color:#bbb; font-size: 11px;">
+                                <?php 
+                                    echo $com['created_at']; 
+                                    if (isset($com['is_edited']) && $com['is_edited'] == 1) {
+                                        echo ' <span style="color:#aaa; font-weight:normal; margin-left:5px;">(已編輯)</span>';
+                                    }
+                                ?>
+                            </small>
+                            
+                            <?php if ($current_user_id !== null && (int)$current_user_id === (int)$com['u_id']): ?>
+                                <div class="user-maintenance-bar">
+                                    <button class="btn-user-action btn-user-edit-text" 
+                                            id="btn-edit-trigger-<?php echo $com['com_id']; ?>"
+                                            onclick="openStudentEditModal(<?php echo $com['com_id']; ?>, <?php echo $com['item_id']; ?>, <?php echo $com['rating']; ?>, '<?php echo htmlspecialchars($com['com_img']); ?>')">
+                                        ✏️ 編輯
+                                    </button>
+                                    <button class="btn-user-action btn-user-delete-text" onclick="studentDeleteComment(<?php echo $com['com_id']; ?>, this)">🗑 刪除</button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
 
                         <?php if ($is_current_shop_owner): ?>
                             <div style="margin-top: 12px;">
@@ -355,14 +385,9 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                                     回覆
                                 </button>
 
-                                <div id="reply-box-<?php echo $com['com_id']; ?>" 
-                                    style="display:none; margin-top:10px;">
-
+                                <div id="reply-box-<?php echo $com['com_id']; ?>" style="display:none; margin-top:10px;">
                                     <form method="POST">
-                                        <input type="hidden" 
-                                            name="com_id" 
-                                            value="<?php echo $com['com_id']; ?>">
-
+                                        <input type="hidden" name="com_id" value="<?php echo $com['com_id']; ?>">
                                         <textarea 
                                             name="reply_content"
                                             rows="3"
@@ -396,22 +421,17 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
                             </div>        
                         <?php endif; ?>
 
-                        <div style="text-align: right;">
-                            <small style="color:#bbb; font-size: 11px;"><?php echo $com['created_at']; ?></small>
-                        </div>
                     </div>
                 </div>
             <?php endwhile; ?>
         <?php else: ?>
             <div style="text-align:center; color:#ccc; padding: 50px 0;">
-                <p style="font-size: 40px; margin: 0;"></p>
                 <p style="margin-top: 10px;">這家餐廳目前沒有任何餐點評價</p>
             </div>
         <?php endif; ?>
     </div>
 
     <div id="noMatchMessage" class="hidden" style="text-align:center; color:#ccc; padding: 50px 0;">
-        <p style="font-size: 40px; margin: 0;"></p>
         <p style="margin-top: 10px;">找不到符合篩選條件的評價內容喔！</p>
     </div>
 </div>
@@ -421,59 +441,6 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 </div>
 
 <script>
-    function filterAndSortComments() {
-        const keyword = document.getElementById('commentSearch').value.toLowerCase().trim();
-        const selectedStar = document.getElementById('commentFilterStars').value; 
-        const sortMode = document.getElementById('commentSort').value; 
-        const container = document.getElementById('commentsContainer');
-        const cards = Array.from(container.getElementsByClassName('comment-card-item'));
-
-        if (cards.length === 0) return;
-
-        const nowTs = Math.floor(Date.now() / 1000);
-        const oneWeekSec = 7 * 24 * 60 * 60;   
-        const oneMonthSec = 30 * 24 * 60 * 60; 
-
-        cards.forEach(card => {
-            const text = card.getAttribute('data-text');
-            const rating = card.getAttribute('data-rating');
-            const hasImg = card.getAttribute('data-has-image');
-            const timeTs = parseInt(card.getAttribute('data-time'), 10); 
-            
-            const matchesKeyword = text.includes(keyword);
-            const matchesStar = (selectedStar === 'all' || rating === selectedStar);
-            
-            let matchesCondition = true;
-            if (sortMode === 'one_week') {
-                matchesCondition = (nowTs - timeTs <= oneWeekSec);
-            } else if (sortMode === 'one_month') {
-                matchesCondition = (nowTs - timeTs <= oneMonthSec);
-            } else if (sortMode === 'has_image') {
-                matchesCondition = (hasImg === 'true');
-            }
-
-            if (matchesKeyword && matchesStar && matchesCondition) {
-                card.classList.remove('hidden');
-            } else {
-                card.classList.add('hidden');
-            }
-        });
-
-        cards.sort((a, b) => {
-            return b.getAttribute('data-time') - a.getAttribute('data-time'); 
-        });
-
-        cards.forEach(card => container.appendChild(card));
-
-        const hasVisible = cards.some(card => !card.classList.contains('hidden'));
-        const noMatchMsg = document.getElementById('noMatchMessage');
-        if (hasVisible) {
-            noMatchMsg.classList.add('hidden');
-        } else {
-            noMatchMsg.classList.remove('hidden');
-        }
-    }
-
     function openFullImage(src) {
         document.getElementById('fullImage').src = src;
         document.getElementById('imageModal').style.display = 'flex';
@@ -522,4 +489,9 @@ $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
     }
 </script>
 
-<?php include('footer.php'); ?>
+<?php 
+include('comments_filter.php');
+include('update_comments.php'); 
+include('delete_comments.php'); 
+include('footer.php'); 
+?>

@@ -15,7 +15,7 @@ $sql = "SELECT
         FROM restaurants r
         LEFT JOIN categories cat ON r.r_id = cat.r_id
         LEFT JOIN items i ON cat.c_id = i.c_id
-        LEFT JOIN comments c ON i.item_id = c.item_id AND c.status = 1
+        LEFT JOIN comments c ON i.item_id = c.item_id
         GROUP BY r.r_id, r.name, r.location, r.image_url
         ORDER BY r.r_id ASC";
 

@@ -11,7 +11,7 @@ $stmt_item->execute();
 $item_info = $stmt_item->get_result()->fetch_assoc();
 
 // 2. 撈取該餐點所有評論[cite: 1]
-$stmt_comments = $conn->prepare("SELECT c.*, a.name as user_name FROM comments c LEFT JOIN accounts a ON c.u_id = a.u_id WHERE c.item_id = ? AND c.status = 1 ORDER BY c.created_at DESC");
+$stmt_comments = $conn->prepare("SELECT c.*, a.name as user_name FROM comments c LEFT JOIN accounts a ON c.u_id = a.u_id WHERE c.item_id = ?  ORDER BY c.created_at DESC");
 $stmt_comments->bind_param("i", $item_id);
 $stmt_comments->execute();
 $comments_result = $stmt_comments->get_result();
