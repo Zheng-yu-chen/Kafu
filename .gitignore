@@ -41,7 +41,8 @@ Thumbs.db
 
 google-api/
 
-
+db.php 
+google_login.php
 
 
 # 忽略包含金鑰的保險箱檔案
