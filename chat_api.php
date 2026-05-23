@@ -36,28 +36,31 @@ if (empty($userMsg)) {
 }
 
 // ==========================================
-// 核心改動：只撈取相關學餐的餐點，避免字數爆表導致 429
+// 核心修正：改用精準 r_id 隨機抽樣，徹底解放資料庫與 429 流量鎖
 // ==========================================
 $dbDataText = "";
 
 try {
-    // 預設不過濾（如果使用者沒提到特定學餐）
     $whereClause = "WHERE 1=1";
     $params = [];
     
-    // 智慧偵測使用者問的是哪一個學餐，讓資料庫先做第一線篩選
-    if (mb_strpos($userMsg, '心園') !== false) {
-        $whereClause = "WHERE r.location LIKE :loc";
-        $params['loc'] = '%心園%';
-    } elseif (mb_strpos($userMsg, '理園') !== false) {
-        $whereClause = "WHERE r.location LIKE :loc";
-        $params['loc'] = '%理園%';
+    // 💡 智慧分流：直接指定各校園學餐的 r_id 範圍，完全跳過高耗能的模糊查詢
+    if (mb_strpos($userMsg, '理園') !== false) {
+        // 理園包含：4.辛蔬料理, 5.澳門華記, 6.娃子早餐店, 7.覓朵朵, 8.豪客來, 10.熊賀炒飯
+        // 使用 ORDER BY RAND() LIMIT 12 隨機抽樣 12 筆招牌菜，字數降到極低，徹底根治 429
+        $whereClause = "WHERE r.r_id IN (4, 5, 6, 7, 8, 10) ORDER BY RAND() LIMIT 12";
     } elseif (mb_strpos($userMsg, '輔園') !== false) {
-        $whereClause = "WHERE r.location LIKE :loc";
-        $params['loc'] = '%輔園%';
+        // 輔園包含：11.食福, 12.深川味, 13.埃及教父, 14.八方雲集, 15.奇奇, 16.新羅, 17.雲瀚, 18.新東家, 19.瑪納
+        $whereClause = "WHERE r.r_id IN (11, 12, 13, 14, 15, 16, 17, 18, 19) ORDER BY RAND() LIMIT 12";
+    } elseif (mb_strpos($userMsg, '心園') !== false) {
+        // 心園包含：1.巧瑋鬆餅, 2.心園麵店, 3.心園自助餐
+        $whereClause = "WHERE r.r_id IN (1, 2, 3) ORDER BY RAND() LIMIT 12";
+    } else {
+        // 如果使用者沒說位置，隨機抓 12 筆墊檔
+        $whereClause = "ORDER BY RAND() LIMIT 12";
     }
 
-    // 正統三表聯合查詢：items -> categories -> restaurants
+    // 正統三表聯合查詢：利用 categories 作為橋樑串接 items 與 restaurants
     $sql = "SELECT r.location AS canteen_location, r.name AS restaurant_name, i.name AS item_name, i.price, i.calories 
             FROM items i
             JOIN categories c ON i.c_id = c.c_id
@@ -68,19 +71,7 @@ try {
     $stmt->execute($params);
     $meals = $stmt->fetchAll();
 
-    // 防呆機制：如果篩選後剛好沒資料（例如問了別的關鍵字），就放寬撈取前 30 筆，避免小抄流空
-    if (empty($meals)) {
-        $sql_fallback = "SELECT r.location AS canteen_location, r.name AS restaurant_name, i.name AS item_name, i.price, i.calories 
-                         FROM items i
-                         JOIN categories c ON i.c_id = c.c_id
-                         JOIN restaurants r ON c.r_id = r.r_id
-                         LIMIT 30";
-        $stmt_fallback = $pdo->prepare($sql_fallback);
-        $stmt_fallback->execute();
-        $meals = $stmt_fallback->fetchAll();
-    }
-
-    // 將資料庫精簡篩選後的內容，組裝成給 Gemini 看的「真實知識庫小抄」
+    // 組裝精簡、安全的「知識庫小抄」
     $dbDataText = "【目前系統資料庫內登記的真實學餐與餐點清單】:\n";
     foreach ($meals as $row) {
         $dbDataText .= "- 位置: " . $row['canteen_location'] . " / 店家: " . $row['restaurant_name'] . " / 餐點: " . $row['item_name'] . " / 價格: " . (int)$row['price'] . "元 / 熱量: " . $row['calories'] . "大卡\n";
