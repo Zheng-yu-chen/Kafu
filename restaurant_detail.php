@@ -2,60 +2,22 @@
 session_start();
 include('db.php');
 include('header.php');
-// 🎯 店家與管理員自動分流機制
-// 檢查是否有登入，且角色是管理員(1) 或 店家(2)
-if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1, 2])) {
-    
-    // 1. 如果是店家(role_id == 2)，我們直接從他登入時記錄的 $_SESSION['r_id'] 導向
-    if ($_SESSION['role_id'] == 2 && isset($_SESSION['r_id'])) {
-        $shop_r_id = intval($_SESSION['r_id']);
-        header("Location: restaurant_management.php?r_id=" . $shop_r_id);
-        exit(); // 切記導向後一定要加上 exit()，中斷執行後續的使用者頁面
-    }
-    
-    // 2. 如果是最高管理員(role_id == 1)，他點誰就看誰的後台，直接拿網址傳過來的 r_id
-    if ($_SESSION['role_id'] == 1 && isset($_GET['r_id'])) {
-        $admin_r_id = intval($_GET['r_id']);
-        header("Location: restaurant_management.php?r_id=" . $admin_r_id);
-        exit();
-    }
-}
 
-// 🎯 確保這段 PHP 代碼獨立存在，不要被包在任何 <div> 裡面
+// 🚫 【已刪除】：把原本強制跳轉到 restaurant_management.php 的代碼全部刪除！
+
+// 🎯 【特殊功能】：從隨機轉盤過來的歡迎泡泡
 if (isset($_GET['from']) && $_GET['from'] === 'dice') {
     $safe_name = htmlspecialchars($_GET['name']);
     echo <<<HTML
     <div id="dice-welcome-bubble" style="
-        position: fixed; 
-        top: 25px; 
-        left: 50%; 
-        transform: translateX(-50%); 
-        z-index: 99999; 
-        background: #FF8C42; 
-        color: white; 
-        padding: 12px 25px; 
-        border-radius: 50px; 
-        font-weight: bold; 
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        white-space: nowrap;
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: fixed; top: 25px; left: 50%; transform: translateX(-50%); z-index: 99999; 
+        background: #FF8C42; color: white; padding: 12px 25px; border-radius: 50px; 
+        font-weight: bold; box-shadow: 0 4px 20px rgba(0,0,0,0.3); white-space: nowrap;
+        pointer-events: none; display: flex; align-items: center; justify-content: center;
+        animation: slideInDice 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
     ">
         現在，我想來點... {$safe_name} 😋
     </div>
-
-    <style>
-        #dice-welcome-bubble {
-            animation: slideInDice 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-        }
-        @keyframes slideInDice {
-            from { top: -80px; opacity: 0; }
-            to { top: 25px; opacity: 1; }
-        }
-    </style>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const bubble = document.getElementById('dice-welcome-bubble');
@@ -69,8 +31,10 @@ if (isset($_GET['from']) && $_GET['from'] === 'dice') {
             }
         });
     </script>
+    <style>@keyframes slideInDice { from { top: -80px; opacity: 0; } to { top: 25px; opacity: 1; } }</style>
 HTML;
 }
+
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $r_id = isset($_GET['r_id']) ? intval($_GET['r_id']) : 0;
@@ -81,58 +45,73 @@ if ($r_id === 0) {
     exit();
 }
 
-$res_sql = "SELECT r.name, r.location 
-            FROM restaurants r 
-            WHERE r.r_id = $r_id";
+// 🎯 【核心權限邏輯】：判斷當前使用者身份與是否有「編輯這間餐廳」的權限
+$can_edit = false;
+$is_user = false;
+$is_store = false;
 
+if (isset($_SESSION['role_id'])) {
+    if ($_SESSION['role_id'] == 1) {
+        // 系統管理員：可以編輯所有餐廳
+        $can_edit = true;
+    } elseif ($_SESSION['role_id'] == 2) {
+        // 店家身份：不顯示加入托盤按鈕
+        $is_store = true;
+        if (isset($_SESSION['r_id']) && $_SESSION['r_id'] == $r_id) {
+            // 只有自己的店可以編輯餐點
+            $can_edit = true;
+        }
+    } elseif ($_SESSION['role_id'] == 3) {
+        // 一般學生
+        $is_user = true;
+    }
+}
+
+// 撈取餐廳基本資訊
+$res_sql = "SELECT r.name, r.location FROM restaurants r WHERE r.r_id = $r_id";
 $res_result = $conn->query($res_sql);
 $res_name = "餐廳資訊";
 $res_loc = "未知位置";
-$res_place = ""; 
-
 if ($res_result && $res_result->num_rows > 0) {
     $res_data = $res_result->fetch_assoc();
     $res_name = $res_data['name'];
     $res_loc = $res_data['location'];
 }
 
+// 撈取肉類來源
 $origin_sql = "SELECT meat_type, country FROM meatorigins WHERE r_id = $r_id";
 $origin_result = $conn->query($origin_sql);
 $origin_list = [];
-
 if ($origin_result && $origin_result->num_rows > 0) {
     while ($ori_data = $origin_result->fetch_assoc()) {
         $origin_list[] = $ori_data['meat_type'] . " : " . $ori_data['country'];
     }
-    $res_place = implode(' / ', $origin_list); 
 }
+$res_place = implode(' / ', $origin_list); 
 
-// 🟢 撈取此餐廳的分類，供新增餐點的下拉選單使用
+// 撈取此餐廳的分類(供新增餐點的下拉選單使用)
 $cat_sql = "SELECT c_id, cat_name FROM categories WHERE r_id = $r_id";
 $cat_result = $conn->query($cat_sql);
 $categories = [];
 if ($cat_result && $cat_result->num_rows > 0) {
-    while($c = $cat_result->fetch_assoc()) {
-        $categories[] = $c;
-    }
+    while($c = $cat_result->fetch_assoc()) { $categories[] = $c; }
 }
 
+// 撈取餐點列表
 $sql = "SELECT i.item_id, i.name, i.price, i.calories, i.protein, i.fat, i.carbs, i.is_vegetarian
         FROM items i
         JOIN categories c ON i.c_id = c.c_id
-        WHERE c.r_id = $r_id 
-        AND i.item_status = 1 
+        WHERE c.r_id = $r_id AND i.item_status = 1 
         ORDER BY i.c_id ASC, i.item_id ASC";
-
 $result = $conn->query($sql);
 ?>
 
 <style>
+    /* 頂部與卡片基礎樣式 */
     .header-section { background-color: var(--fujen-blue, #002B5B); color: white; padding: 30px 20px 20px; position: relative; }
     .back-btn { color: white; text-decoration: none; font-size: 14px; display: inline-block; margin-bottom: 15px; opacity: 0.9; }
-    .header-title h1 { margin: 0; font-size: 24px; }
-    .header-title p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
-    .menu-container { padding: 20px; }
+    .menu-container { padding: 20px; padding-bottom: 90px; }
+    
     .item-card { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .item-info h4 { margin: 0; font-size: 16px; color: var(--fujen-blue, #002B5B); }
     
@@ -141,87 +120,65 @@ $result = $conn->query($sql);
     
     .price-tag { color: #E53935; font-weight: bold; font-size: 14px; }
     .pro-tag { color: var(--primary-orange, #FF8C42); font-weight: bold; }
-
     .fire-icon { width: 14px; height: 14px; object-fit: contain; vertical-align: middle; margin-right: 2px; margin-bottom: 2px; }
     .dest-icon { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px; margin-bottom: 3px; opacity: 0.9; }
     
+    /* 按鈕樣式 */
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
     .add-btn:active { transform: scale(0.95); }
-/* admin_dashboard 的編輯/刪除按鈕樣式，與菜單維護頁一致 */
-    /* .action-icons { display: flex; flex-direction: column; gap: 5px; }
-    .btn-edit { background: #002B5B; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .btn-delete { background: #F44336; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; } */
 
-    /* ================= 彈出視窗專屬樣式 ================= */
-    .modal-overlay {
-        display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0.5); z-index: 10000; 
-        justify-content: center; align-items: center; padding: 20px;
-    }
-    .modal-box {
-        background: white; width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: slideUp 0.3s ease;
-    }
+    /* 💡 解開隱藏的編輯/刪除按鈕樣式 */
+    .action-icons { display: flex; flex-direction: column; gap: 5px; }
+    .btn-edit { background: #002B5B; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight:bold; }
+    .btn-delete { background: #F44336; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight:bold; }
+
+    /* Modal 樣式 */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 10000; justify-content: center; align-items: center; padding: 20px; }
+    .modal-box { background: white; width: 100%; max-width: 380px; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.22); animation: slideUp 0.28s cubic-bezier(0.2,0.9,0.2,1); box-sizing: border-box; }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     
-    .modal-header {
-        background-color: var(--fujen-blue, #002B5B); color: white; padding: 20px;
-        display: flex; justify-content: space-between; align-items: flex-start;
-    }
+    .modal-header { background-color: var(--fujen-blue, #002B5B); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
     .modal-header h2 { margin: 0; font-size: 20px; }
     .modal-header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; font-weight: normal; }
     .close-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; }
     
-    .modal-body { padding: 20px; }
-    .form-group { margin-bottom: 20px; }
+    .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+    .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 14px; color: #333; margin-bottom: 8px; font-weight: bold; }
     
     .date-input-wrapper { position: relative; }
-    .date-icon { position: absolute; left: 12px; top: 12px; font-size: 16px; color: #555; pointer-events: none; }
-    .date-input { width: 100%; padding: 12px 12px 12px 35px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
-    /* 沒有 icon 的 input */
-    .clean-input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; width: 100%; box-sizing: border-box; }
+    .date-icon { position: absolute; left: 14px; top: 14px; font-size: 18px; color: #555; pointer-events: none; }
+    .date-input { width: 100%; padding: 14px 14px 14px 42px; border: 1px solid #e6e6e6; border-radius: 14px; font-size: 16px; box-sizing: border-box; }
+    .clean-input { padding: 14px; border: 1px solid #e6e6e6; border-radius: 14px; font-size: 16px; width: 100%; box-sizing: border-box; }
+    input[type="number"] { border-radius: 14px; box-sizing: border-box; }
 
     .meal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .meal-option { display: block; }
     .meal-option input { display: none; }
-    .meal-option span { 
-        display: block; text-align: center; padding: 12px; background: #eee; color: #333; border-radius: 8px; font-size: 14px; cursor: pointer; box-sizing: border-box; border: 1px solid transparent; transition: transform 0.1s ease, background 0.2s, color 0.2s; 
-    }
-    .meal-option span:active { transform: scale(0.94); }
-    .meal-option input:checked + span { background: var(--fujen-blue, #002B5B); color: rgb(255, 255, 255); font-weight: bold; }
+    .meal-option span { display: block; text-align: center; padding: 14px; background: #eee; color: #333; border-radius: 14px; font-size: 15px; cursor: pointer; box-sizing: border-box; border: 1px solid transparent; transition: 0.18s; }
+    .meal-option input:checked + span { background: var(--fujen-blue, #002B5B); color: white; font-weight: bold; }
     
     .qty-control { display: flex; align-items: center; gap: 10px; }
-    .qty-btn { width: 45px; height: 45px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 8px; font-size: 20px; cursor: pointer; transition: 0.2s; }
-    .qty-btn:active { background: #eee; }
-    .qty-input { flex: 1; text-align: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .qty-btn { width: 48px; height: 48px; border: 1px solid #e6e6e6; background: #f8f9fa; border-radius: 12px; font-size: 20px; cursor: pointer; transition: 0.15s; }
+    .qty-input { flex: 1; text-align: center; padding: 14px; border: 1px solid #e6e6e6; border-radius: 12px; font-size: 16px; }
 
-    .submit-tray-btn {
-        width: 100%; background-color: #E6762D; color: white; padding: 15px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.3s, transform 0.1s, box-shadow 0.1s; box-shadow: 0 4px 0 #B35C22; 
-    }
+    .submit-tray-btn { width: 100%; background-color: #E6762D; color: white; padding: 16px; border: none; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; margin-top: 12px; box-shadow: 0 6px 0 #B35C22; transition: 0.1s; }
     .submit-tray-btn:hover { background-color: #FF8336; }
     .submit-tray-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #B35C22; }
 
-    @keyframes fadeInOut {
-        0% { opacity: 0; transform: translate(-50%, 20px); }
-        15% { opacity: 1; transform: translate(-50%, 0); }
-        85% { opacity: 1; transform: translate(-50%, 0); }
-        100% { opacity: 0; transform: translate(-50%, -20px); }
-    }
-    #toast-container { position: fixed; top: 60px; left: 50%; z-index: 100000; pointer-events: none; }
+    #toast-container { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 100000; pointer-events: none; }
 </style>
 
 <div class="header-section">
     <a href="index.php" class="back-btn">❮ 返回店家列表</a>
     
     <div class="header-title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%;">
-        
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <h1 style="margin: 0; font-size: 24px; color: #ffffff;">
                 <?php echo htmlspecialchars($res_name); ?>
             </h1>
             
-            <?php if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1,2])): ?>
+            <?php if ($can_edit): ?>
                 <button onclick="openAddModal()" style="background: var(--primary-orange, #FF8C42); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">+ 新增餐點</button>
             <?php endif; ?>
         </div>
@@ -238,26 +195,19 @@ $result = $conn->query($sql);
                 </span>
             </div>
         <?php endif; ?>
-        
     </div>
 </div>
+
 <div class="menu-container">
     <?php if ($result && $result->num_rows > 0): ?>
         <?php while($row = $result->fetch_assoc()): ?>
             <?php 
-                // $is_admin_or_owner = isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1,2]);
-                $is_user = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3;
-                // $show_add_btn = !$is_admin_or_owner; 
-
                 $is_fav = false;
                 if ($is_user && isset($_SESSION['u_id'])) {
                     $u_id = $_SESSION['u_id'];
                     $item_id = $row['item_id'];
-                    $fav_check_sql = "SELECT 1 FROM favorites WHERE u_id = $u_id AND item_id = $item_id";
-                    $fav_check_res = $conn->query($fav_check_sql);
-                    if ($fav_check_res && $fav_check_res->num_rows > 0) {
-                        $is_fav = true;
-                    }
+                    $fav_check_res = $conn->query("SELECT 1 FROM favorites WHERE u_id = $u_id AND item_id = $item_id");
+                    if ($fav_check_res && $fav_check_res->num_rows > 0) { $is_fav = true; }
                 }
             ?>
             <div class="item-card" data-item-id="<?php echo $row['item_id']; ?>" data-item-name="<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>" data-price="<?php echo floatval($row['price']); ?>" data-calories="<?php echo htmlspecialchars($row['calories'] ?? ''); ?>" data-protein="<?php echo htmlspecialchars($row['protein'] ?? ''); ?>" data-fat="<?php echo htmlspecialchars($row['fat'] ?? ''); ?>" data-carbs="<?php echo htmlspecialchars($row['carbs'] ?? ''); ?>">
@@ -287,15 +237,15 @@ $result = $conn->query($sql);
                     </div>
                 </div>
                 
-                
-                    <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name']); ?>')" 
-                            style="margin-left: 15px; flex-shrink: 0;">+</button>
-               
-                    <!-- <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
+                <?php if ($can_edit): ?>
+                    <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
                         <button class="btn-edit" onclick="openEditModal(<?php echo $row['item_id']; ?>)">編輯</button>
                         <button class="btn-delete" onclick="deleteItem(<?php echo $row['item_id']; ?>)">刪除</button>
-                    </div> -->
-                
+                    </div>
+                <?php elseif ($is_user): ?>
+                    <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>')" style="margin-left: 15px; flex-shrink: 0;">+</button>
+                <?php endif; ?>
+
             </div>
         <?php endwhile; ?>
     <?php else: ?>
@@ -375,7 +325,7 @@ $result = $conn->query($sql);
             </div>
             <div class="form-group">
                 <label>價格</label>
-                <input id="editPrice" type="number" step="1" class="clean-input" />
+                <input id="editPrice" type="number" step="0.01" class="clean-input" />
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
                 <div class="form-group" style="margin-bottom: 0;">
@@ -459,10 +409,9 @@ $result = $conn->query($sql);
     </div>
 </div>
 
-<div id="toast-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100000;"></div>
+<div id="toast-container"></div>
 
 <script>
-    // --- 提示訊息 ---
     function showToast(message) {
         const container = document.getElementById('toast-container');
         if (!container) return;
@@ -473,7 +422,7 @@ $result = $conn->query($sql);
         setTimeout(() => { toast.remove(); }, 2000);
     }
 
-    // --- 托盤功能 ---
+    // Modal 開關邏輯
     function openTrayModal(itemId, itemName) {
         document.getElementById('modalItemId').value = itemId;
         document.getElementById('modalItemName').innerText = itemName;
@@ -484,31 +433,25 @@ $result = $conn->query($sql);
         const qtyInput = document.getElementById('modalQty');
         let currentVal = parseInt(qtyInput.value) || 1;
         let newVal = currentVal + amt;
-        if (newVal < 1) newVal = 1;
-        qtyInput.value = newVal;
+        qtyInput.value = (newVal < 1) ? 1 : newVal;
     }
     function closeTrayModal() { document.getElementById('trayModal').style.display = 'none'; }
     document.getElementById('trayModal').addEventListener('click', function(e) { if (e.target === this) closeTrayModal(); });
 
-    // --- 收藏功能 ---
     function toggleFavorite(btn, itemId) {
         const formData = new FormData();
         formData.append('item_id', itemId);
         fetch('save_favorite.php', { method: 'POST', body: formData })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             if (data.success) {
-                if (data.status === 'added') {
-                    btn.innerText = '❤️'; btn.classList.add('active'); showToast('收藏餐點');
-                } else {
-                    btn.innerText = '🤍'; btn.classList.remove('active'); showToast('取消收藏餐點');
-                }
+                if (data.status === 'added') { btn.innerText = '❤️'; btn.classList.add('active'); showToast('收藏餐點'); } 
+                else { btn.innerText = '🤍'; btn.classList.remove('active'); showToast('取消收藏餐點'); }
             } else { alert('操作失敗，請先登入！'); }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(err => console.error(err));
     }
 
-    // --- 編輯功能 ---
     function openEditModal(itemId) {
         const card = document.querySelector('.item-card[data-item-id="' + itemId + '"]');
         if (!card) return;
@@ -522,6 +465,8 @@ $result = $conn->query($sql);
         document.getElementById('editModal').style.display = 'flex';
     }
     function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+    document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+
     function saveEdit() {
         const data = new FormData();
         data.append('action', 'update');
@@ -535,14 +480,10 @@ $result = $conn->query($sql);
 
         fetch('manage_menu_api.php', { method: 'POST', body: data })
         .then(res => res.json())
-        .then(resp => {
-            if (resp.success) location.reload();
-            else alert('更新失敗：' + (resp.error || '伺服器回應錯誤'));
-        })
+        .then(resp => { if (resp.success) location.reload(); else alert('更新失敗'); })
         .catch(err => { console.error(err); alert('網路錯誤'); });
     }
 
-    // --- 刪除功能 ---
     function deleteItem(itemId) {
         if (!confirm('確定要刪除此餐點？此操作無法回復。')) return;
         const data = new FormData();
@@ -551,16 +492,11 @@ $result = $conn->query($sql);
 
         fetch('manage_menu_api.php', { method: 'POST', body: data })
         .then(res => res.json())
-        .then(resp => {
-            if (resp.success) location.reload();
-            else alert('刪除失敗');
-        })
+        .then(resp => { if (resp.success) location.reload(); else alert('刪除失敗'); })
         .catch(err => { console.error(err); alert('網路錯誤'); });
     }
 
-    // --- 🌟 新增功能 ---
     function openAddModal() {
-        // 清空欄位
         document.getElementById('addName').value = '';
         document.getElementById('addPrice').value = '';
         document.getElementById('addCalories').value = '';
@@ -569,24 +505,16 @@ $result = $conn->query($sql);
         document.getElementById('addCarbs').value = '';
         document.getElementById('addModal').style.display = 'flex';
     }
-    
-    function closeAddModal() { 
-        document.getElementById('addModal').style.display = 'none'; 
-    }
-    
+    function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+    document.getElementById('addModal').addEventListener('click', function(e) { if (e.target === this) closeAddModal(); });
+
     function saveNewItem() {
         const c_id = document.getElementById('addCategory').value;
         const name = document.getElementById('addName').value;
         const price = document.getElementById('addPrice').value;
 
-        if (!c_id) {
-            alert('沒有可用的餐點分類，請先至後台新增分類！');
-            return;
-        }
-        if (!name || !price) {
-            alert('餐點名稱與價格為必填！');
-            return;
-        }
+        if (!c_id) { alert('沒有分類，請先至後台新增！'); return; }
+        if (!name || !price) { alert('名稱與價格為必填！'); return; }
 
         const data = new FormData();
         data.append('action', 'add');
@@ -600,14 +528,7 @@ $result = $conn->query($sql);
 
         fetch('manage_menu_api.php', { method: 'POST', body: data })
         .then(res => res.json())
-        .then(resp => {
-            if (resp.success) {
-                alert('新增成功！');
-                location.reload();
-            } else {
-                alert('新增失敗：' + (resp.error || resp.message || '伺服器回應錯誤'));
-            }
-        })
+        .then(resp => { if (resp.success) { alert('新增成功！'); location.reload(); } else { alert('新增失敗'); } })
         .catch(err => { console.error(err); alert('網路錯誤'); });
     }
 </script>
