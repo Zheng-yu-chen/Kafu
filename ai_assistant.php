@@ -245,4 +245,3 @@ document.addEventListener("DOMContentLoaded", function() {
 </body>
 </html>
 
-//推送用
