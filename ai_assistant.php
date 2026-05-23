@@ -149,7 +149,6 @@ function formatAIResponse(text) {
         
         // 2. 徹底根治 Bug：把容易造成前端混淆或排版壞掉的列表星號（*），全部替換成安全的圓點（•）
         cleanText = cleanText.split('\n').map(line => {
-            // 如果這行是以星號開頭，就把它換成圓點
             if (line.trim().startsWith('*')) {
                 return line.replace('*', '•');
             }
@@ -159,7 +158,7 @@ function formatAIResponse(text) {
         return cleanText;
     } catch (err) {
         console.error("排版解析失敗，輸出原始文字:", err);
-        return text; // 萬一出錯，至少完整吐出文字，絕不斷尾
+        return text; 
     }
 }
 
@@ -173,11 +172,15 @@ async function sendMessage() {
 
     // 渲染使用者說的話
     appendMessage('user', message);
+    
+    // 💡 強制防禦：立刻清空輸入框，防止連續發送或文字殘留打結
     chatInput.value = '';
+    chatInput.focus();
 
     // 生成一個唯一的讀取狀態 ID
     const loadingId = 'loading-' + Date.now();
     appendMessage('ai', '正在為您挑選校園美食...', loadingId);
+    chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
         const response = await fetch('chat_api.php', {
@@ -186,21 +189,31 @@ async function sendMessage() {
             body: JSON.stringify({ message: message })
         });
 
+        // 💡 如果伺服器直接回傳非 200 狀態（例如 429 限制）
+        if (!response.ok) {
+            throw new Error(`HTTP 錯誤狀態碼: ${response.status}`);
+        }
+
         const rawText = await response.text();
         try {
             const data = JSON.parse(rawText);
             const formattedReply = formatAIResponse(data.reply || "小助手開小差了，請稍後再試。");
-            document.getElementById(loadingId).innerHTML = formattedReply; // 改用 innerHTML 以支援粗體排版
+            document.getElementById(loadingId).innerHTML = formattedReply; 
         } catch (jsonErr) {
             console.error("PHP 回傳內容異常:", rawText);
-            document.getElementById(loadingId).innerText = "小助手思緒有點混亂，請檢查後端設定。";
+            document.getElementById(loadingId).innerText = "小助手思緒有點混亂，請稍後重試。";
         }
     } catch (e) {
         console.error("Fetch 錯誤:", e);
-        document.getElementById(loadingId).innerText = "通訊失敗，請檢查網路連線 🥺";
+        // 💡 如果是 429 流量鎖，給予同學最親切的提示
+        if (e.message.includes('429')) {
+            document.getElementById(loadingId).innerText = "【連線冷卻中 429】學長姐被問得太熱烈啦！請稍等 1 分鐘再問一次喔 🥺";
+        } else {
+            document.getElementById(loadingId).innerText = "通訊失敗，請檢查網路連線或更新 API 金鑰 🥺";
+        }
     }
     
-    // 每次收到訊息後，再次確保滾動到最底部
+    // 確保滾動到最底部
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -211,10 +224,9 @@ function appendMessage(role, text, id = '') {
     msgDiv.className = `bubble ${role}`;
     if (id) msgDiv.id = id;
     
-    msgDiv.innerHTML = formatAIResponse(text); // 統一支援粗體轉換
+    msgDiv.innerHTML = formatAIResponse(text); 
     chatBox.appendChild(msgDiv);
     
-    // 自動捲動到最新對話訊息
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
