@@ -143,4 +143,3 @@ if ($httpCode !== 200) {
     echo json_encode(['reply' => $aiReply]);
 }
 ?>
-

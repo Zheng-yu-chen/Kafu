@@ -2,6 +2,24 @@
 session_start();
 include('db.php');
 include('header.php');
+// 🎯 店家與管理員自動分流機制
+// 檢查是否有登入，且角色是管理員(1) 或 店家(2)
+if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1, 2])) {
+    
+    // 1. 如果是店家(role_id == 2)，我們直接從他登入時記錄的 $_SESSION['r_id'] 導向
+    if ($_SESSION['role_id'] == 2 && isset($_SESSION['r_id'])) {
+        $shop_r_id = intval($_SESSION['r_id']);
+        header("Location: restaurant_management.php?r_id=" . $shop_r_id);
+        exit(); // 切記導向後一定要加上 exit()，中斷執行後續的使用者頁面
+    }
+    
+    // 2. 如果是最高管理員(role_id == 1)，他點誰就看誰的後台，直接拿網址傳過來的 r_id
+    if ($_SESSION['role_id'] == 1 && isset($_GET['r_id'])) {
+        $admin_r_id = intval($_GET['r_id']);
+        header("Location: restaurant_management.php?r_id=" . $admin_r_id);
+        exit();
+    }
+}
 
 // 🎯 確保這段 PHP 代碼獨立存在，不要被包在任何 <div> 裡面
 if (isset($_GET['from']) && $_GET['from'] === 'dice') {
@@ -129,10 +147,10 @@ $result = $conn->query($sql);
     
     .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
     .add-btn:active { transform: scale(0.95); }
-
-    .action-icons { display: flex; flex-direction: column; gap: 5px; }
+/* admin_dashboard 的編輯/刪除按鈕樣式，與菜單維護頁一致 */
+    /* .action-icons { display: flex; flex-direction: column; gap: 5px; }
     .btn-edit { background: #002B5B; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .btn-delete { background: #F44336; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    .btn-delete { background: #F44336; color: white; border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; } */
 
     /* ================= 彈出視窗專屬樣式 ================= */
     .modal-overlay {
@@ -227,9 +245,9 @@ $result = $conn->query($sql);
     <?php if ($result && $result->num_rows > 0): ?>
         <?php while($row = $result->fetch_assoc()): ?>
             <?php 
-                $is_admin_or_owner = isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1,2]);
+                // $is_admin_or_owner = isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1,2]);
                 $is_user = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3;
-                $show_add_btn = !$is_admin_or_owner; 
+                // $show_add_btn = !$is_admin_or_owner; 
 
                 $is_fav = false;
                 if ($is_user && isset($_SESSION['u_id'])) {
@@ -269,16 +287,15 @@ $result = $conn->query($sql);
                     </div>
                 </div>
                 
-                <?php if ($show_add_btn): ?>
+                
                     <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name']); ?>')" 
                             style="margin-left: 15px; flex-shrink: 0;">+</button>
-                <?php elseif ($is_admin_or_owner): ?>
-                    <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
+               
+                    <!-- <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
                         <button class="btn-edit" onclick="openEditModal(<?php echo $row['item_id']; ?>)">編輯</button>
                         <button class="btn-delete" onclick="deleteItem(<?php echo $row['item_id']; ?>)">刪除</button>
-                    </div>
-                <?php endif; ?>
-
+                    </div> -->
+                
             </div>
         <?php endwhile; ?>
     <?php else: ?>

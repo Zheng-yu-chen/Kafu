@@ -25,26 +25,33 @@ include('header.php');
         .chat-main-box {
             flex: 1;
             overflow-y: auto;
-            padding: 20px 20px 40px 20px; /* 關鍵修正：增加底部 padding，確保對話滾動時不會被輸入框擋住 */
+            padding: 20px;
+            padding-bottom: 50px; /* 🌟 增加一點底部留白，避免最後一則訊息被加高的輸入框擋住 */
             display: flex;
             flex-direction: column;
             gap: 12px;
-            /* 💡 關鍵修正：強迫內層盒子在 Flex 布局下最大高度不能超出剩餘空間，才能順利觸發滾動條 */
-            max-height: calc(100% - 65px); 
         }
 
         /* 底部對話輸入欄區塊 */
         .chat-input-bar {
-            padding: 12px 15px;
+            padding: 12px 15px 32px 15px; /* 🌟 關鍵：底部增加 32px 的 Padding，把輸入框安全地往上推 */
             background: white;
             border-top: 1px solid #eee;
             display: flex;
             gap: 10px;
             align-items: center;
-            position: relative; 
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05); /* 加點微陰影，更有質感 */
-            height: 65px; /* 💡 固定高度，方便內層精準計算滾動範圍 */
-            box-sizing: border-box;
+            position: sticky;
+            bottom: 58px; /* 🌟 讓它的白色背景完美貼齊底部導覽列 */
+            z-index: 1000;
+        }
+
+        @media (max-width: 420px) {
+            .chat-input-bar {
+                width: calc(100vw - 16px);
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 90px;
+            }
         }
 
         .chat-styled-input {
