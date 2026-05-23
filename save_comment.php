@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_SESSION['u_id'])) {
     }
     
 
-    $stmt = $conn->prepare("INSERT INTO comments (u_id, item_id, rating, content, com_img, status) VALUES (?, ?, ?, ?, ?, 1)");
+    $stmt = $conn->prepare("INSERT INTO comments (u_id, item_id, rating, content, com_img) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("iiiss", $u_id, $item_id, $rating, $content, $com_img);
     
     if ($stmt->execute()) {
