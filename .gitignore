@@ -46,3 +46,9 @@ google-api/
 
 # 忽略包含金鑰的保險箱檔案
 env.php
+
+#我測試用 
+test.php
+
+#sql
+db.php
