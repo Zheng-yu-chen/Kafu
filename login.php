@@ -5,14 +5,11 @@ include('header.php');
 
 $error_msg = '';
 
-// 檢查是否有「記住帳密」的 Cookie，有就讀取出來預填
 $saved_account = isset($_COOKIE['saved_account']) ? $_COOKIE['saved_account'] : '';
 $saved_password = '';
-
 if (isset($_COOKIE['saved_password'])) {
     $saved_password = base64_decode($_COOKIE['saved_password']);
 }
-
 $cookie_checked = (!empty($saved_account) && !empty($saved_password)) ? 'checked' : '';
 
 // 當表單送出時執行登入驗證
@@ -30,6 +27,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
         
+        // 🌟 關鍵新增：檢查帳號是否被封鎖
+        if (isset($user['is_blocked']) && $user['is_blocked'] == 1) {
+            echo "<script>alert('您的帳號已被管理員停權！\\n無法登入，如有疑問請聯繫系統管理。'); window.location.href='login.php';</script>";
+            exit();
+        }
+
+        // 登入成功寫入 Session
         $_SESSION['u_id'] = $user['u_id'];
         $_SESSION['name'] = $user['name'];
         $_SESSION['role_id'] = $user['role_id'];
@@ -39,12 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             setcookie('saved_account', $acc, time() + (30 * 24 * 60 * 60), "/", "", false, true);
             setcookie('saved_password', base64_encode($pwd), time() + (30 * 24 * 60 * 60), "/", "", false, true);
         } else {
-            if (isset($_COOKIE['saved_account'])) {
-                setcookie('saved_account', '', time() - 3600, "/");
-            }
-            if (isset($_COOKIE['saved_password'])) {
-                setcookie('saved_password', '', time() - 3600, "/");
-            }
+            setcookie('saved_account', '', time() - 3600, "/");
+            setcookie('saved_password', '', time() - 3600, "/");
         }
 
         if ($user['role_id'] == 3) {

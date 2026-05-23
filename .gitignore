@@ -41,7 +41,7 @@ Thumbs.db
 
 google-api/
 
-db.php 
+db.php
 google_login.php
 
 
@@ -50,6 +50,3 @@ env.php
 
 #我測試用 
 test.php
-
-#sql
-db.php
