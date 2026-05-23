@@ -143,3 +143,5 @@ if ($httpCode !== 200) {
     echo json_encode(['reply' => $aiReply]);
 }
 ?>
+
+//推送用

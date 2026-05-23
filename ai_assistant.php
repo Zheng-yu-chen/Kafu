@@ -244,3 +244,5 @@ document.addEventListener("DOMContentLoaded", function() {
 <?php include('footer.php'); ?>
 </body>
 </html>
+
+//推送用
