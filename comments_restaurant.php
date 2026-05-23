@@ -247,15 +247,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
 
 <div style="padding: 20px; max-width: 600px; margin: 0 auto; padding-bottom: 100px;">
     
-    <a href="comments.php" class="back-btn">❮ 返回店家列表</a>
-    
-    <div style="display: flex; align-items: center; gap: 15px; margin-top: 5px; margin-bottom: 15px;">
-        <img src="images/<?php echo htmlspecialchars($res_info['image_url'] ?: 'default.jpg'); ?>" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-        <div>
-            <h2 style="margin: 0; font-size: 22px; color: #000;"><?php echo htmlspecialchars($res_info['name']); ?></h2>
-        </div>
+    <div style="margin-bottom: 15px; position: relative; z-index: 10;">
+        <a href="comments.php" class="back-btn" style="text-decoration: none !important; color: #002B5B !important; font-size: 14px; font-weight: bold; display: inline-block;">
+            ❮ 返回店家列表
+        </a>
     </div>
 
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px; margin-bottom: 15px; position: relative; z-index: 5;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="images/<?php echo htmlspecialchars($res_info['image_url'] ?: 'default.jpg'); ?>" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            <div>
+                <h2 style="margin: 0; font-size: 22px; color: #000;"><?php echo htmlspecialchars($res_info['name']); ?></h2>
+            </div>
+        </div>
+        
+        <?php if ($current_user_id !== null && !$is_current_shop_owner && !$is_admin): ?>
+            <a href="add_comment.php?r_id=<?php echo $r_id; ?>" 
+               style="text-decoration: none; background: #002B5B; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,43,91,0.15);">
+                <span>＋</span>新增評論
+            </a>
+        <?php endif; ?>
+    </div> <div class="filter-control-bar">
+        </div>
     <div class="filter-control-bar">
         <div class="search-input-wrapper">
             <img src="icon/search_icon.png" class="search-icon" alt="搜尋" onclick="filterAndSortComments()">
