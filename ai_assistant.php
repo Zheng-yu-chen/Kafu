@@ -8,7 +8,7 @@ include('header.php');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>輔大美食 AI 助手</title>
+    <title>呷寶</title>
     <link rel="stylesheet" href="style.css">
     <style>
         /* 整頁式聊天室專用佈局 */
@@ -114,13 +114,13 @@ include('header.php');
 <body>
 
 <div class="header-blue" style="display: flex; align-items: center; gap: 15px;">
-    <h1 style="margin: 0; font-size: 22px;">輔大美食 AI 助手</h1>
+    <h1 style="margin: 0; font-size: 22px;">呷寶</h1>
 </div>
 
 <div class="chat-page-container">
     
     <div id="chat-box" class="chat-main-box">
-        <div class="bubble ai">嗨！我是輔大美食小助手 🧑‍🍳，今天想在校園裡吃點什麼呢？<br><br>今天天氣真好，要不要去心園吃個香噴噴的鬆餅，或是去理園來份飽足的便當呢？<br>👉 <a href="index.php" style="color: #FF8C42; font-weight: bold; text-decoration: underline;">[點我查看校園所有店家]</a><br><br>你也可以直接問我：<br>• 「心園有什麼推薦的美味餐點？」<br>• 「幫我找 100 元以內的飽足下午餐」<br>• 「熱量低於 500 大卡的健康午餐有哪些？」</div>
+        <div class="bubble ai">嗨！我是呷寶，今天想在校園裡吃點什麼呢？<br><br>今天天氣真好，要不要去心園吃個香噴噴的鬆餅，或是去理園來份飽足的便當呢？<br>👉 <a href="index.php" style="color: #FF8C42; font-weight: bold; text-decoration: underline;">[點我查看校園所有店家]</a><br><br>你也可以直接問我：<br>• 「心園有什麼推薦的美味餐點？」<br>• 「幫我找 100 元以內的飽足下午餐」<br>• 「熱量低於 500 大卡的健康午餐有哪些？」</div>
     </div>
 
     <div class="chat-input-bar">
