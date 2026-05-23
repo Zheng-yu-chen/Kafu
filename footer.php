@@ -31,12 +31,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </a>
     <?php endif; ?>
 
+    <?php if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3): ?>
     <a href="ai_assistant.php" class="nav-item ai-nav-item <?php echo ($current_page == 'ai_assistant.php') ? 'active' : ''; ?>">
         <div class="ai-nav-icon-ring">
             <img src="icon/chatbot_icon.png" alt="小助手">
         </div>
         <span class="ai-nav-text">小助手</span>
     </a>
+    <?php endif; ?>
 
     <a href="comments.php" class="nav-item <?php echo ($current_page == 'comments.php') ? 'active' : ''; ?>">
         <div class="nav-icon"><img src="icon/comment_icon.png" alt="評價"></div>
@@ -76,7 +78,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     /* --- 底部導覽列 AI 助理按鈕專用 --- */
     .ai-nav-item {
-        position: relative;
+        position: relative; /* 🌟 改回 relative，讓它乖乖待在導覽列的 flex 容器內 */
         flex: 1.2; 
         display: flex;
         flex-direction: column;
@@ -84,20 +86,22 @@ $current_page = basename($_SERVER['PHP_SELF']);
         justify-content: flex-end; 
         text-decoration: none;
         cursor: pointer;
-        transform: translateY(-20px); 
+        transform: translateY(-20px); /* 🌟 控制往上凸起的高度，數值越大凸越高 */
         padding-bottom: 0;
+        z-index: 10005;
     }
 
     .ai-nav-icon-ring {
-        width: 60px;
-        height: 60px;
+        width: 64px;
+        height: 64px;
         background-color: #ffffff; 
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
-        box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.08); 
-        margin-bottom: 4px;
+        box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.08); /* 微微的上方立體陰影 */
+        margin-bottom: 4px; /* 與文字的距離 */
+        z-index: 10006;
     }
 
     .ai-nav-icon-ring img {
@@ -120,8 +124,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         color: #bbb;
         font-weight: bold;
         position: absolute;
-        bottom: -15px; 
+        bottom: -16px; /* 🌟 把文字往下壓，讓它剛好跟「首頁」、「我的」等文字切齊 */
     }
+    
     .ai-nav-item.active .ai-nav-text {
         color: var(--fujen-blue, #002B5B);
     }

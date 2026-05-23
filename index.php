@@ -285,9 +285,29 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     #ai-assistant-fab img { width: 54px; height: 54px; object-fit: contain; border-radius: 50%;}
 
     .assistant-card {
-        position: absolute !important; bottom: 170px; right: 25px;
-        width: 280px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        z-index: 1000; overflow: hidden; display: none; pointer-events: auto; 
+        position: absolute !important;
+        bottom: 170px;
+        right: 25px;
+        width: min(90vw, 320px);
+        max-width: 320px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        z-index: 1000;
+        overflow: hidden;
+        display: none;
+        pointer-events: auto;
+        box-sizing: border-box;
+    }
+
+    @media (max-width: 420px) {
+        .assistant-card {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+            width: calc(100vw - 24px);
+            bottom: 100px;
+        }
     }
     .assistant-header { background: var(--fujen-blue, #002B5B); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
     .assistant-body { padding: 18px; font-size: 14px; }
