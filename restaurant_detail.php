@@ -50,6 +50,9 @@ $can_edit = false;
 $is_user = false;
 $is_store = false;
 
+// 預設是否顯示加入托盤按鈕：訪客與一般使用者顯示，店家與管理員不顯示
+$show_add_btn = true;
+
 if (isset($_SESSION['role_id'])) {
     if ($_SESSION['role_id'] == 1) {
         // 系統管理員：可以編輯所有餐廳
@@ -65,6 +68,11 @@ if (isset($_SESSION['role_id'])) {
         // 一般學生
         $is_user = true;
     }
+}
+
+// 管理員（1）與店家（2）不應看到加入托盤按鈕
+if (isset($_SESSION['role_id']) && in_array($_SESSION['role_id'], [1,2])) {
+    $show_add_btn = false;
 }
 
 // 撈取餐廳基本資訊
@@ -242,7 +250,7 @@ $result = $conn->query($sql);
                         <button class="btn-edit" onclick="openEditModal(<?php echo $row['item_id']; ?>)">編輯</button>
                         <button class="btn-delete" onclick="deleteItem(<?php echo $row['item_id']; ?>)">刪除</button>
                     </div>
-                <?php elseif ($is_user): ?>
+                <?php elseif ($show_add_btn): ?>
                     <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>')" style="margin-left: 15px; flex-shrink: 0;">+</button>
                 <?php endif; ?>
 
