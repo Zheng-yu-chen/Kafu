@@ -1,7 +1,6 @@
 <?php
 include('db.php');
 include('header.php');
-session_start();
 
 // 1. 檢查登入狀態
 $u_id = $_SESSION['u_id'] ?? null; 
@@ -269,6 +268,14 @@ if ($is_logged_in) {
         <div class="menu-text">
             <h4>詳細設定</h4>
             <p>修改目標熱量、飲食偏好</p>
+        </div>
+        <div style="color:#ccc;">❯</div>
+    </a>
+
+    <a href="<?php echo $is_logged_in ? 'bug_report.php' : 'login.php'; ?>" class="menu-link" style="border-top: 1px solid #f0f0f0;">
+        <div class="menu-text">
+            <h4>系統錯誤回報</h4>
+            <p>回報系統 Bug 或菜單資料錯誤</p>
         </div>
         <div style="color:#ccc;">❯</div>
     </a>

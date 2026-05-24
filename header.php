@@ -1,3 +1,8 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+?>
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -113,4 +118,103 @@ if (isset($_SESSION['u_id'])) {
         }
     }
 })();
+</script>
+
+<style>
+    /* 登出確認視窗背景 */
+    #logoutConfirmModal { 
+        display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); 
+        z-index: 20000; align-items: center; justify-content: center; 
+        backdrop-filter: blur(2px);
+    }
+    
+    /* 極簡卡片本體 */
+    .logout-modal-card { 
+        background: #fff; padding: 25px 20px; border-radius: 16px; 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); 
+        max-width: 300px; width: 85%; text-align: center; 
+        animation: popIn 0.25s ease-out; 
+        box-sizing: border-box;
+        display: flex;              
+        flex-direction: column;     /* 卡片內容依然由上往下（先標題、後按鈕） */
+        align-items: center;        
+    }
+    
+    @keyframes popIn { 
+        from { opacity: 0; transform: scale(0.95); } 
+        to { opacity: 1; transform: scale(1); } 
+    }
+    
+    #logoutConfirmModal h3 { 
+        margin: 0 0 20px 0; color: #333; font-size: 18px; font-weight: bold; 
+    }
+    
+    /* 🌟 關鍵修改：按鈕專用的左右排列容器 */
+    .logout-btn-group {
+        display: flex;
+        flex-direction: row;        /* 強制兩顆按鈕左右並排 */
+        gap: 12px;                  /* 兩顆按鈕中間的間距 */
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    #logoutConfirmModal .btn { 
+        flex: 1;                    /* 🌟 關鍵：平分左右寬度 */
+        padding: 12px 0; border-radius: 10px; 
+        font-weight: bold; font-size: 15px; cursor: pointer; border: none; 
+        transition: 0.15s; box-sizing: border-box;
+    }
+    
+    /* 左邊：確定按鈕 (紅色) */
+    #logoutConfirmModal .btn-danger { background: #E53935; color: white; }
+    #logoutConfirmModal .btn-danger:active { background: #D32F2F; transform: scale(0.98); }
+    
+    /* 右邊：取消按鈕 (灰色) */
+    #logoutConfirmModal .btn-cancel { background: #f0f0f0; color: #555; }
+    #logoutConfirmModal .btn-cancel:active { background: #e4e4e4; transform: scale(0.98); }
+</style>
+
+<div id="logoutConfirmModal">
+    <div class="logout-modal-card" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
+        <h3 id="logoutTitle">確定要登出嗎？</h3>
+        
+        <div class="logout-btn-group">
+            <button class="btn btn-danger" id="confirmLogoutBtn">確定</button>
+            <button class="btn btn-cancel" id="cancelLogoutBtn">取消</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showLogoutConfirm() {
+        const modal = document.getElementById('logoutConfirmModal');
+        if (modal) modal.style.display = 'flex';
+    }
+    
+    function closeLogoutConfirm() { 
+        const modal = document.getElementById('logoutConfirmModal'); 
+        if (modal) modal.style.display = 'none'; 
+    }
+    
+    document.addEventListener('DOMContentLoaded', function(){
+        const confirmBtn = document.getElementById('confirmLogoutBtn');
+        const cancelBtn = document.getElementById('cancelLogoutBtn');
+        
+        if (confirmBtn) confirmBtn.addEventListener('click', function(){ location.href = 'logout.php?confirm=1'; });
+        if (cancelBtn) cancelBtn.addEventListener('click', closeLogoutConfirm);
+        
+        // 點擊觸發
+        document.body.addEventListener('click', function(e){
+            const target = e.target.closest && e.target.closest('a.logout-btn');
+            if (target) { e.preventDefault(); showLogoutConfirm(); }
+        });
+        
+        // 點擊背景關閉
+        const modalBg = document.getElementById('logoutConfirmModal');
+        if(modalBg) {
+            modalBg.addEventListener('click', function(e) {
+                if (e.target === this) closeLogoutConfirm();
+            });
+        }
+    });
 </script>

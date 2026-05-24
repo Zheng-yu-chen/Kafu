@@ -1,6 +1,6 @@
 <?php
-// 安全防護：如果 Session 還沒啟動，就幫它啟動
-if (session_status() === PHP_SESSION_NONE) {
+// 安全防護：如果 Session 還沒啟動且還沒送出 headers，就啟動它
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
 }
 
