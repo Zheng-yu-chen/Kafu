@@ -184,13 +184,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
     
     .control-search {
         width: 100%;
-        padding: 10px 35px 10px 12px; 
+        height: 32px; 
+        padding: 0 35px 0 12px; 
         border-radius: 20px;
         border: 1px solid #ddd;
         font-size: 13px;
         outline: none;
         box-sizing: border-box;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        background: white;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
 
@@ -200,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
     }
 
     .control-sort, .control-filter-stars {
+        height: 32px; 
         padding: 0 10px;
         border-radius: 20px;
         border: 1px solid #ddd;
@@ -244,6 +247,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
     .btn-user-edit-text:hover { background: rgba(0, 43, 91, 0.12); }
     .btn-user-delete-text { color: #D32F2F; background: rgba(211, 47, 47, 0.05); display: inline-flex; align-items: center; gap: 3px; }
     .btn-user-delete-text:hover { background: rgba(211, 47, 47, 0.12); }
+
+    .report-user-btn {
+        background-color: #f0f2f5;
+        border: none;
+        color: #888; 
+        cursor: pointer;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%; 
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px; 
+        transition: background-color 0.2s, color 0.2s, transform 0.1s;
+    }
+
+    .report-user-btn:hover {
+        background-color: rgba(211, 47, 47, 0.1) !important;
+        color: #D32F2F !important;
+        transform: scale(1.05);
+    }
+
+    .report-user-btn:active {
+        transform: scale(0.95);
+    }
 </style>
 
 <div style="padding: 20px; max-width: 600px; margin: 0 auto; padding-bottom: 100px;">
@@ -270,8 +298,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
 
             </a>
         <?php endif; ?>
-    </div> <div class="filter-control-bar">
-        </div>
+    </div> 
+    
+    <div class="filter-control-bar">
+    </div>
+    
     <div class="filter-control-bar">
         <div class="search-input-wrapper">
             <img src="icon/search_icon.png" class="search-icon" alt="搜尋" onclick="filterAndSortComments()">
@@ -313,17 +344,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
                             <button class="comment-delete-btn" onclick="deleteComment(<?php echo $com['com_id']; ?>, this)" title="刪除評論">🗑</button>
                         <?php endif; ?>
                         
-                        <div class="user-tag">
-                            <?php if (!empty($com['user_photo'])): ?>
-                                <img src="uploads/<?php echo htmlspecialchars($com['user_photo']); ?>" 
-                                     class="user-avatar" 
-                                     alt="頭像" 
-                                     onerror="this.onerror=null; this.src=this.src.replace('.jpg', '.JPG');">
-                            <?php else: ?>
-                                <div class="user-avatar-placeholder">👤</div>
-                            <?php endif; ?>
-                            
-                            <?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?>
+                        <div class="user-tag" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                <?php if (!empty($com['user_photo'])): ?>
+                                    <img src="uploads/<?php echo htmlspecialchars($com['user_photo']); ?>" 
+                                         class="user-avatar" 
+                                         alt="頭像" 
+                                         onerror="this.onerror=null; this.src=this.src.replace('.jpg', '.JPG');">
+                                <?php else: ?>
+                                    <div class="user-avatar-placeholder">👤</div>
+                                <?php endif; ?>
+                                
+                                <?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?>
+                            </div>
+
+                          <?php if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id']): ?>
+                                <button class="report-user-btn" onclick="reportComment(<?php echo $com['com_id']; ?>)" title="檢舉此評論">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> </button>
+                          <?php endif; ?>
                         </div>
                         
                         <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 4px;">
@@ -470,43 +508,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
         if (toolbar) toolbar.style.display = 'flex';
     }
 
-    function deleteComment(comId, button) {
-        if (!confirm('管理員確定要刪除此評論嗎？此操作無法復原。')) return;
-
-        const formData = new FormData();
-        formData.append('action', 'reject');
-        formData.append('com_id', comId);
-
-        fetch('manage_review_api.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const card = button.closest('.comment-card-item');
-                if (card) card.remove();
-            } else {
-                alert('刪除失敗，請稍後再試。');
-            }
-        })
-        .catch(() => {
-            alert('網路錯誤，無法刪除評論。');
-        });
-    }
-
-    function toggleReplyBox(comId) {
-        const box = document.getElementById('reply-box-' + comId);
-        if (box.style.display === 'none') {
-            box.style.display = 'block';
-        } else {
-            box.style.display = 'none';
-        }
-    }
+    
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // 檢查網址有沒有帶評論 (例如 #comment-card-12)
     if (window.location.hash) {
         const targetId = window.location.hash;
         const targetCard = document.querySelector(targetId);
@@ -533,7 +538,10 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 <?php 
 include('comments_filter.php');
+include('comment_scroll_effect.php');
 include('update_comments.php'); 
 include('delete_comments.php'); 
+include('manage_comment.php');
+include('report_modal.php');
 include('footer.php'); 
 ?>
