@@ -1,7 +1,6 @@
 <?php
 session_start();
 include('db.php');
-include('header.php');
 
 $error_msg = '';
 
@@ -59,6 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error_msg = '帳號或密碼錯誤，請重新輸入！';
     }
 }
+include('header.php');
+
 ?>
 
 <style>
