@@ -30,11 +30,43 @@ try {
     .header-section {
         background-color: var(--fujen-blue, #002B5B);
         color: white; 
-        padding: 30px 20px 40px; 
+        padding: 30px 20px 8px; 
     }
-    .header-title { text-align: left; margin-bottom: 15px; }
+    .header-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+        width: 100%;
+    }
+    .header-title { text-align: left; }
     .header-title h1 { margin: 0; font-size: 24px; }
     .header-title p { margin: 5px 0 0; font-size: 13px; opacity: 0.8; }
+
+ 
+.history-btn-top {
+    text-decoration: none !important;
+    background-color: #FF8C42; 
+    color: white !important;
+    padding: 8px 18px; 
+    border-radius: 50px; 
+    font-size: 13px; 
+    font-weight: bold; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 5px; 
+    box-shadow: 0 2px 6px rgba(255,140,66,0.2); 
+    transition: background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+    margin-top: 0px; 
+}
+    .history-btn-top:hover { 
+        background-color: #E67E38; 
+    }
+
+    .history-btn-top:active { 
+        transform: scale(0.90); 
+    }
 
     .search-container { position: relative; margin-bottom: 25px; }
     
@@ -76,31 +108,12 @@ try {
     .filter-tag { background: rgba(255,255,255,0.2); color: white; padding: 6px 18px; border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
     .filter-tag.active { background: white; color: var(--fujen-blue, #002B5B); font-weight: bold; }
 
-    .share-banner { 
-        background: var(--primary-orange, #FF8C42); 
-        color: white; 
-        margin: -20px 20px 15px; 
-        position: relative; 
-        z-index: 10; 
-        height: 50px;      
-        padding: 0 15px;    
-        border-radius: 12px; 
-        display: flex; justify-content: center; align-items: center; 
-        text-decoration: none; font-weight: bold; gap: 10px; 
-        box-shadow: 0 4px 10px rgba(255,140,66,0.3); 
-        transition: transform 0.1s ease, box-shadow 0.1s ease; 
-    }
-
-    .share-banner:active {
-        transform: scale(0.96); 
-        box-shadow: 0 2px 5px rgba(255,140,66,0.2);
-    }
 
     .comment-list { 
         padding: 0 20px; 
         position: relative;
         z-index: 5;
-        margin-top: <?php echo (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3) ? '0' : '-20px'; ?>;
+        margin-top: 15px; 
     }
     
     .comment-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; text-decoration: none; color: inherit; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -115,9 +128,17 @@ try {
 </style>
 
 <div class="header-section">
-    <div class="header-title">
-        <h1>社群評價</h1>
-        <p>挑選想查看評價的輔大校園美食店家</p>
+    <div class="header-top-row">
+        <div class="header-title">
+            <h1>社群評價</h1>
+            <p>挑選想查看評價的輔大校園美食店家</p>
+        </div>
+        
+        <?php if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3): ?>
+            <a href="my_comments.php" class="history-btn-top">
+                <span></span>歷史評論
+            </a>
+        <?php endif; ?>
     </div>
 
     <div class="search-container">
@@ -132,13 +153,6 @@ try {
         <div class="filter-tag" onclick="filterByLocation('輔園', this)">輔園</div>
     </div>
 </div>
-
-<?php if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3): ?>
-<a href="post_comment.php" class="share-banner">
-    <img src="icon/camera_icon.png" style="width: 32px; height: 32px; object-fit: contain; transform: translateY(1px); background: transparent !important;" alt="相機"> 
-    分享我的用餐體驗
-</a>
-<?php endif; ?>
 
 <div class="comment-list" id="commentList">
     <?php if ($result && $result->num_rows > 0): ?>

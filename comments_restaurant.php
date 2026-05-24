@@ -84,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
     }
 }
 ?>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
     .comment-img-thumb {
@@ -263,8 +264,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
         
         <?php if ($current_user_id !== null && !$is_current_shop_owner && !$is_admin): ?>
             <a href="add_comment.php?r_id=<?php echo $r_id; ?>" 
-               style="text-decoration: none; background: #002B5B; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,43,91,0.15);">
-                <span>＋</span>新增評論
+            style="text-decoration: none; background: #002B5B; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,43,91,0.15);">
+            
+            <span style="transform: translateY(1.5px); display: inline-block;"><i class="fa-solid fa-camera"></i></span>新增評論
+
             </a>
         <?php endif; ?>
     </div> <div class="filter-control-bar">
@@ -501,7 +504,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
         }
     }
 </script>
-
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 檢查網址有沒有帶評論 (例如 #comment-card-12)
+    if (window.location.hash) {
+        const targetId = window.location.hash;
+        const targetCard = document.querySelector(targetId);
+        
+        if (targetCard) {
+            setTimeout(() => {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                const innerBox = targetCard.querySelector('div[style*="background:white"]');
+                if (innerBox) {
+                    innerBox.style.transition = "all 0.4s ease";
+                    innerBox.style.borderColor = "#FF8C42"; 
+                    innerBox.style.boxShadow = "0 0 15px rgba(255,140,66,0.4)"; 
+                    
+                    setTimeout(() => {
+                        innerBox.style.borderColor = "#f0f0f0";
+                        innerBox.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+                    }, 2500);
+                }
+            }, 300);
+        }
+    }
+});
+</script>
 <?php 
 include('comments_filter.php');
 include('update_comments.php'); 
