@@ -33,6 +33,7 @@ $chart_labels = [];
 $chart_data = [];
 $weekly_comments_count = 0; // 💡 【加這行】先給它預設值 0，這樣下面絕對不會再噴 Undefined 錯誤！
 $reviews_result = null;
+$hot_items_list = [];
 try {
     //滿意度分析
     // 嘗試從資料庫抓取該登入店家的真實餐廳名稱（預防 SQL 注入，使用 intval 轉型過的變數）
@@ -97,19 +98,20 @@ try {
         $total_count = intval($row['total_count']);
         $weekly_comments_count = intval($row['var_weekly_count']);
     }
-    // 🛡️ 絕對獨立通道：熱門餐點前三名排序（依平均星等降冪，分數相同則依評論數降冪）
-    $hot_items_list = []; // 💡 畫面 HTML 正確對接的變數名稱
+    // 🛡️ 絕對獨立通道：熱門餐點前三名排序（融合防呆機制）
+    $hot_items_list = []; // 畫面 HTML 正確對接的變數名稱
     
+    // 💡 融合關鍵：改用 items 作為主表，並用 LEFT JOIN 連接 comments
+    // 這樣就算餐點「完全沒有人評論」，也絕對撈得出資料，不會變成空白！
     $sql_hot_ranking = "SELECT i.item_name, 
-                               AVG(c.rating) AS avg_score, 
+                               IFNULL(AVG(c.rating), 0.0) AS avg_score, 
                                COUNT(c.com_id) AS click_count
-                        FROM comments c
-                        JOIN items i ON c.item_id = i.item_id
+                        FROM items i
                         JOIN categories cat ON i.c_id = cat.c_id
+                        LEFT JOIN comments c ON i.item_id = c.item_id
                         WHERE cat.r_id = $store_id
                         GROUP BY i.item_id, i.item_name
-                        HAVING click_count > 0
-                        ORDER BY click_count DESC, avg_score DESC
+                        ORDER BY click_count DESC, avg_score DESC, i.item_id ASC
                         LIMIT 3";
     
     $hot_ranking_result = $conn->query($sql_hot_ranking);
@@ -117,10 +119,19 @@ try {
         while ($hot_row = $hot_ranking_result->fetch_assoc()) {
             $hot_items_list[] = [
                 'item_name'  => $hot_row['item_name'],
-                'item_score' => $hot_row['avg_score'] ? round(floatval($hot_row['avg_score']), 1) : 0.0,
+                'item_score' => round(floatval($hot_row['avg_score']), 1),
                 'item_count' => intval($hot_row['click_count'])
             ];
         }
+    }
+
+    // 💡 終極防呆二部曲：如果這家餐廳連「半個餐點」都還沒建立
+    if (empty($hot_items_list)) {
+        $hot_items_list = [
+            ['item_name' => '尚未建立餐點A', 'item_score' => 0.0, 'item_count' => 0],
+            ['item_name' => '尚未建立餐點B', 'item_score' => 0.0, 'item_count' => 0],
+            ['item_name' => '尚未建立餐點C', 'item_score' => 0.0, 'item_count' => 0]
+        ];
     }
     // 💡 請確保這行抓最新評論的 code 還是在 try 的最後面
     $sql_reviews = "SELECT c.*, i.item_name, a.name AS reviewer_name 
@@ -139,6 +150,31 @@ try {
 ?>
 
 <style>
+    /* 🎯 右上角發布公告按鈕 - 完美融入綠色頂欄 */
+    .btn-publish-announcement {
+        position: absolute;
+        top: 25px;       /* 往下微調，跟網頁頂端保持舒適距離 */
+        right: 20px;     /* 貼齊右邊對齊線 */
+        padding: 6px 14px;
+        background-color: #FF9800; 
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.6);   /* 質感細白框 */
+        text-decoration: none;
+        border-radius: 20px;  /* 圓角造型，比照你下方的登出按鈕風格 */
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+        z-index: 99; /* 確保按鈕在最上層，不會被文字或卡片遮擋 */
+    }
+
+    /* 滑鼠移上去時變為純白底、綠字 */
+    .btn-publish-announcement:hover {
+        background-color: #ffffff;
+        color: #388E3C; /* 變成你原本頂欄的綠色 */
+        border-color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
     body { background-color: #f4f7f9; padding-bottom: 20px; }
 
     /* 頂部綠色營運儀表板 */
@@ -332,12 +368,22 @@ try {
         box-shadow: 0 4px 10px rgba(0,0,0,0.03);
     }
     .logout-btn:active { background-color: #FFF5F5; transform: scale(0.95); }
+    
 </style>
 
 <div class="store-header">
+    <a href="publish_announcement.php" class="btn-publish-announcement">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <i class="fa-solid fa-bullhorn" style="margin-right: 4px;"></i>新增公告
+    </a>
     <h1>店家營運儀表板</h1>
+    <div style="position: relative;">
+    
     <!-- 這裡會顯示目前登入店家的真實店名 -->
     <p><?php echo htmlspecialchars($store_name); ?></p>
+    <!-- 加入右上角發布公告按鈕 -->
+    
+</div>
     <!-- 💡 外層只有這一個主要的 stats-container 容器 -->
     <div class="stats-container">
         <!-- 1. 總平均評分卡片 -->
@@ -378,9 +424,38 @@ try {
 <!-- 🎯 熱門餐點排行區塊 -->
 <div class="dashboard-section">
     <div class="section-title"><span style="color:#FF8C42">⭐</span> 本店熱門餐點排行</div>
-    <div class="ranking-list" id="js-ranking-list">
-        <!-- 這裡等一下會由 JavaScript 自動計算全店資料並渲染 -->
-        <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">正在統計全店排行...</p>
+        <div class="ranking-list">
+        <?php if (!empty($hot_items_list)): ?>
+            <?php foreach ($hot_items_list as $index => $item): ?>
+                <?php
+                    $medals = ['🥇', '🥈', '🥉'];
+                    $medal = $medals[$index] ?? '🔹';
+                ?>
+                <div class="ranking-item">
+                    <div>
+                        <span style="margin-right:8px;">
+                            <?php echo $medal; ?>
+                        </span>
+                        <strong>
+                            <?php echo htmlspecialchars($item['item_name']); ?>
+                        </strong>
+                    </div>
+
+                    <div style="color:#666;">
+                        <span style="color:#FF8C42;font-weight:bold;">
+                            <?php echo $item['item_score']; ?> ★
+                        </span>
+                        <span style="font-size:12px;color:#999;margin-left:5px;">
+                            (<?php echo $item['item_count']; ?> 則評論)
+                        </span>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p style="text-align:center;color:#999;padding:20px 0;">
+                目前暫無餐點排行資料
+            </p>
+        <?php endif; ?>
     </div>
 </div>
 

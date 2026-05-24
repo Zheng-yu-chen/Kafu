@@ -80,10 +80,156 @@ if ($is_logged_in) {
         $chart_data[] = $cal;
     }
 }
+    // 1. 真正用來撈出前 5 則顯示在選單裡的資料
+    $announcement_query = "SELECT title, content, created_at FROM announcements ORDER BY created_at DESC LIMIT 5";
+    $announcement_result = $conn->query($announcement_query);
+
+    // 2. 另外寫一個查詢，去算資料庫「總共有幾則」公告，這才是真正的小紅點數字
+    $count_query = "SELECT COUNT(id) AS total FROM announcements";
+    $count_result = $conn->query($count_query);
+    $count_row = $count_result ? $count_result->fetch_assoc() : null;
+
+    $announcement_count = $count_row ? intval($count_row['total']) : 0;
+
 ?>
 
 <style>
     body { background: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
+    /* ==========================================================================
+   通知鈴鐺與下拉選單樣式
+   ========================================================================== */
+
+    /* 鈴鐺最外層貨櫃定位 */
+    .notification-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    /* 鈴鐺按鈕本體 */
+    .notification-trigger {
+        background: none;
+        border: none;
+        color: #666666; /* 預設深灰色。如果你的導覽列是綠底，可以改成 #ffffff */
+        font-size: 20px;
+        cursor: pointer;
+        position: relative;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s ease;
+    }
+
+    /* 滑鼠移上去時，鈴鐺變成亮橘色 */
+    .notification-trigger:hover {
+        color: #FF9800; 
+    }
+
+    /* 未讀通知小紅點 */
+    .notification-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background-color: #ff4d4f; /* 警示紅 */
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: bold;
+        border-radius: 10px;
+        padding: 2px 6px;
+        line-height: 1;
+        min-width: 12px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(255, 77, 79, 0.3);
+    }
+
+    /* 公告下拉選單卡片本體 */
+    .notification-menu {
+        display: none; /* 預設隱藏 */
+        position: absolute;
+        right: 0;
+        top: 100%;
+        width: 290px;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12); /* 質感微陰影 */
+        z-index: 1000;
+        margin-top: 12px;
+        overflow: hidden;
+        border: 1px solid #edf2f7;
+    }
+    /* 確定要有這行！當有 .show 時才顯示選單 */
+    .notification-menu.show {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* 下拉選單頂部標頭 */
+    .notification-header {
+        background-color: #f8fafc;
+        padding: 14px 16px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #333333;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    /* 公告列表滾動區域 */
+    .notification-list {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+
+    /* 單條公告項目 */
+    .notification-item {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f0f4f8;
+        transition: background-color 0.2s ease;
+    }
+
+    /* 滑鼠移入公告項目變淺灰藍色 */
+    .notification-item:hover {
+        background-color: #f8fafc;
+    }
+
+    .notification-item:last-child {
+        border-bottom: none;
+    }
+
+    /* 公告標題 */
+    .noti-title {
+        font-size: 13px;
+        font-weight: bold;
+        color: #2d3748;
+        margin-bottom: 4px;
+    }
+
+    /* 公告內容（超過兩行自動變 ...） */
+    .noti-content {
+        font-size: 12px;
+        color: #718096;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* 公告時間 */
+    .noti-time {
+        font-size: 10px;
+        color: #a0aec0;
+        margin-top: 6px;
+        text-align: right;
+    }
+
+    /* 完全沒有公告時的空白狀態 */
+    .notification-empty {
+        padding: 30px 20px;
+        text-align: center;
+        color: #a0aec0;
+        font-size: 13px;
+    }
     .profile-header { background-color: #002B5B; color: white; padding: 60px 20px 80px; display: flex; align-items: center; gap: 15px; position: relative; }
 
     .avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; }
@@ -140,6 +286,7 @@ if ($is_logged_in) {
 </style>
 
 <div class="profile-header">
+    
     <div class="avatar-container" onclick="document.getElementById('avatarInput').click();">
         <div class="avatar-circle">
             <?php 
@@ -170,6 +317,48 @@ if ($is_logged_in) {
 
         <p><?php echo $is_logged_in ? "帳號：" . htmlspecialchars($user_account) : "登入後開啟健康追蹤功能"; ?></p>
     </div>
+    <!-- 店家通知鈴鐺組件開始 -->
+    <div class="notification-dropdown">
+        <button class="notification-trigger" id="notiBtn" type="button">
+            <!-- 鈴鐺圖示（使用 Font Awesome） -->
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+            <i class="fa-solid fa-bell"></i>
+            
+            <!-- 檢查若有公告，就吐出小紅點和數量 -->
+            <?php if ($announcement_count > 0): ?>
+                <span class="notification-badge"><?php echo $announcement_count; ?></span>
+            <?php endif; ?>
+        </button>
+        
+        <!-- 下拉公告卡片 -->
+        <div class="notification-menu" id="notiMenu">
+            <div class="notification-header">最新店家公告</div>
+            <div class="notification-list">
+                <?php 
+                // 📍 注意 1：因為前面可能被登入的人讀過一次，訪客要讀時，強制把指標歸零重頭讀取
+                if ($announcement_result) {
+                    $announcement_result->data_seek(0);
+                }
+                if ($announcement_count > 0 && $announcement_result) {    
+                    // 迴圈讀取資料庫撈出來的每一筆公告
+                    while($row = $announcement_result->fetch_assoc()) {
+                        ?>
+                        <div class="notification-item">
+                            <div class="noti-title"><?php echo htmlspecialchars($row['title']); ?></div>
+                            <div class="noti-content"><?php echo htmlspecialchars($row['content']); ?></div>
+                            <div class="noti-time"><?php echo date('m/d H:i', strtotime($row['created_at'])); ?></div>
+                        </div>
+                        <?php
+                    }
+                } else {
+                    // 資料庫沒資料時顯示的提示
+                    echo '<div class="notification-empty">目前沒有任何公告</div>';
+                }
+                ?>
+            </div>
+        </div>
+    </div>
+<!-- 店家通知鈴鐺組件結束 -->
     <?php if (!$is_logged_in): ?>
         <a href="login.php" class="btn-login-top">登入</a>
     <?php endif; ?>
@@ -287,34 +476,69 @@ if ($is_logged_in) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: <?php echo json_encode($chart_labels); ?>,
-            datasets: [{ 
-                label: '每日熱量', 
-                data: <?php echo json_encode($chart_data); ?>, 
-                borderColor: '#FF8C42', 
-                backgroundColor: 'rgba(255, 140, 66, 0.1)', 
-                borderWidth: 3, 
-                fill: true, 
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: '#FF8C42'
-            }]
-        },
-        options: { 
-            responsive: true,
-            plugins: { legend: { display: false } }, 
-            scales: { 
-                y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, 
-                x: { grid: { display: false } } 
-            } 
-        }
-    });
-    </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // 1. 圖表安全防護
+    const chartCanvas = document.getElementById('trendChart');
+    if (chartCanvas) {
+        const ctx = chartCanvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?php echo json_encode($chart_labels ?? []); ?>,
+                datasets: [{ 
+                    label: '每日熱量', 
+                    data: <?php echo json_encode($chart_data ?? []); ?>, 
+                    borderColor: '#FF8C42', 
+                    backgroundColor: 'rgba(255, 140, 66, 0.1)', 
+                    borderWidth: 3, 
+                    fill: true, 
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#FF8C42'
+                }]
+            },
+            options: { 
+                responsive: true,
+                plugins: { legend: { display: false } }, 
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, 
+                    x: { grid: { display: false } } 
+                } 
+            }
+        });
+    }
+
+    // 2. 🎯 精準定位改法：直接用 id 綁定，百分之百能觸發
+    const notiBtn = document.getElementById('notiBtn');
+    const notiMenu = document.getElementById('notiMenu');
+
+    if (notiBtn && notiMenu) {
+        // 點擊鈴鐺按鈕
+        notiBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation(); // 防止事件傳到外面被關閉
+            
+            // 檢查目前有沒有 show，沒有就加上，有就移除
+            if (notiMenu.classList.contains('show')) {
+                notiMenu.classList.remove('show');
+            } else {
+                notiMenu.classList.add('show');
+            }
+        });
+
+        // 點擊選單內部時，不要關閉選單
+        notiMenu.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
+        // 點擊網頁其他任何地方，直接關閉選單
+        document.addEventListener('click', function () {
+            notiMenu.classList.remove('show');
+        });
+    }
+});
+</script>
 <?php endif; ?>
 
 <?php include('footer.php'); ?>
