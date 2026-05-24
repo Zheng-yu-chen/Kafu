@@ -85,18 +85,42 @@ try {
 
     // 總平均星等
     // 💡 【新增】抓取該餐廳所有評論的總平均分數
-    $sql_avg = "SELECT AVG(c.rating) AS total_avg, COUNT(c.com_id) AS total_count
+    $sql_avg = "SELECT AVG(c.rating) AS total_avg, COUNT(c.com_id) AS total_count, COUNT(c.com_id) AS var_weekly_count
                 FROM comments c
                 JOIN items i ON c.item_id = i.item_id
                 JOIN categories cat ON i.c_id = cat.c_id
                 WHERE cat.r_id = $store_id";
-
     $avg_result = $conn->query($sql_avg);
-    
     if ($avg_result && $row = $avg_result->fetch_assoc()) {
         // 如果有資料，四捨五入到小數點後第一位（例如 4.6）
         $total_avg = $row['total_avg'] ? round(floatval($row['total_avg']), 1) : 0.0;
         $total_count = intval($row['total_count']);
+        $weekly_comments_count = intval($row['var_weekly_count']);
+    }
+    // 🛡️ 絕對獨立通道：熱門餐點前三名排序（依平均星等降冪，分數相同則依評論數降冪）
+    $hot_items_list = []; // 💡 畫面 HTML 正確對接的變數名稱
+    
+    $sql_hot_ranking = "SELECT i.item_name, 
+                               AVG(c.rating) AS avg_score, 
+                               COUNT(c.com_id) AS click_count
+                        FROM comments c
+                        JOIN items i ON c.item_id = i.item_id
+                        JOIN categories cat ON i.c_id = cat.c_id
+                        WHERE cat.r_id = $store_id
+                        GROUP BY i.item_id, i.item_name
+                        HAVING click_count > 0
+                        ORDER BY click_count DESC, avg_score DESC
+                        LIMIT 3";
+    
+    $hot_ranking_result = $conn->query($sql_hot_ranking);
+    if ($hot_ranking_result && $hot_ranking_result->num_rows > 0) {
+        while ($hot_row = $hot_ranking_result->fetch_assoc()) {
+            $hot_items_list[] = [
+                'item_name'  => $hot_row['item_name'],
+                'item_score' => $hot_row['avg_score'] ? round(floatval($hot_row['avg_score']), 1) : 0.0,
+                'item_count' => intval($hot_row['click_count'])
+            ];
+        }
     }
     // 💡 請確保這行抓最新評論的 code 還是在 try 的最後面
     $sql_reviews = "SELECT c.*, i.item_name, a.name AS reviewer_name 
@@ -105,22 +129,9 @@ try {
                     JOIN categories cat ON i.c_id = cat.c_id
                     LEFT JOIN accounts a ON c.u_id = a.u_id
                     WHERE cat.r_id = $store_id
-                    ORDER BY c.created_at DESC LIMIT 3";
+                    ORDER BY c.created_at DESC";
     $reviews_result = $conn->query($sql_reviews);
-    // 💡 直接用最乾淨的語法去數這家餐廳的所有評論數（防呆，先確保能抓到數字！）
-    $sql_weekly_comments = "SELECT COUNT(c.com_id) AS weekly_count 
-                            FROM comments c
-                            JOIN items i ON c.item_id = i.item_id
-                            JOIN categories cat ON i.c_id = cat.c_id
-                            WHERE cat.r_id = $store_id";
-                            
-    $weekly_result = $conn->query($sql_weekly_comments);
-
-    if ($weekly_result && $row = $weekly_result->fetch_assoc()) {
-        $weekly_comments_count = intval($row['weekly_count']);
-    } else {
-        $weekly_comments_count = 0;
-    }
+    
 } catch (mysqli_sql_exception $e) {
     // 若出錯的友善處理，不洩漏資料庫錯誤訊息
     $error_msg = "資料載入失敗，請稍後再試。";
@@ -199,16 +210,97 @@ try {
         background: white; border-radius: 15px; margin: -20px 15px 20px;
         padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; z-index: 10;
     }
-    .dashboard-section + .dashboard-section { margin-top: 20px; }
-    .section-title { font-size: 16px; font-weight: bold; color: #002B5B; margin: 0 0 15px; display: flex; align-items: center; gap: 8px; }
+    .dashboard-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    display: block !important; /* 確保沒有被隱藏 */
+    visibility: visible !important;
+    }
 
-    /* 排行榜 */
-    .ranking-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid #f0f0f0; border-radius: 10px; margin-bottom: 10px; }
-    .rank-left { display: flex; align-items: center; gap: 15px; }
-    .rank-badge { width: 32px; height: 32px; background: var(--primary-orange, #FF8C42); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 14px; }
-    .rank-info h5 { margin: 0; font-size: 15px; color: #333; }
-    .rank-info p { margin: 4px 0 0; font-size: 12px; color: #888; }
-    .rank-score { color: var(--primary-orange, #FF8C42); font-weight: bold; font-size: 15px; }
+    .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    }
+
+    /* 🎯 熱門排行外層容器 */
+.ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 每一個餐點項目的卡片樣式 */
+.ranking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* 輕微的滑過懸停效果，讓介面更靈動 */
+.ranking-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+}
+
+.rank-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* 圓形數字名次徽章 */
+.rank-badge {
+    width: 30px;
+    height: 30px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 餐點名稱與評價數 */
+.rank-info h5 {
+    margin: 0 0 4px 0;
+    font-size: 15px;
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.rank-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #718096;
+}
+
+/* 右側金色星星分數 */
+.rank-score {
+    font-weight: bold;
+    color: #ffb300;
+    font-size: 16px;
+    white-space: nowrap;
+    background: #fff9db;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
 
     /* 需要改進卡片 */
     .warning-item { background-color: #FFF8F8; border: 1px solid #FFCDD2; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
@@ -275,13 +367,6 @@ try {
             <div class="num"><?php echo $weekly_comments_count; ?></div>
             <div class="trend">動態同步最新數據</div>
         </div>
-
-        <!-- 3. 本週銷量卡片 -->
-        <div class="stat-box">
-            <h4>本週銷量</h4>
-            <div class="num">534</div>
-            <div class="trend">↑ 8% vs 上週</div>
-        </div>
     </div>
 </div>
 
@@ -290,18 +375,12 @@ try {
     <canvas id="satisfactionChart" height="120"></canvas>
 </div>
 
+<!-- 🎯 熱門餐點排行區塊 -->
 <div class="dashboard-section">
-    <div class="section-title"><span style="color:#FF8C42">⭐</span> 熱門餐點排行</div>
-    <div class="ranking-list">
-        <!-- 提醒：這裡目前的資料是前端靜態呈現，後續可改成與該 store_id 綁定的熱門排行 -->
-        <div class="ranking-item">
-            <div class="rank-left"><div class="rank-badge">1</div><div class="rank-info"><h5>華記招牌飯</h5><p>本週銷售 156 份</p></div></div>
-            <div class="rank-score">★ 4.8</div>
-        </div>
-        <div class="ranking-item">
-            <div class="rank-left"><div class="rank-badge" style="background:#FFA726;">2</div><div class="rank-info"><h5>蜜汁叉燒飯</h5><p>本週銷售 128 份</p></div></div>
-            <div class="rank-score">★ 4.6</div>
-        </div>
+    <div class="section-title"><span style="color:#FF8C42">⭐</span> 本店熱門餐點排行</div>
+    <div class="ranking-list" id="js-ranking-list">
+        <!-- 這裡等一下會由 JavaScript 自動計算全店資料並渲染 -->
+        <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">正在統計全店排行...</p>
     </div>
 </div>
 
@@ -315,27 +394,41 @@ try {
 
 <div class="dashboard-section">
     <div class="section-title"><span>💬</span> 最新評論</div>
-    <?php if (isset($reviews_result) && $reviews_result->num_rows > 0): ?>
-        <?php while($rev = $reviews_result->fetch_assoc()): ?>
-            <div class="review-item">
-                <div class="review-top">
-                    <div>
-                        <strong style="font-size:14px;"><?php echo htmlspecialchars($rev['reviewer_name'] ?? '匿名'); ?></strong>
-                        <div style="font-size:11px; color:#999;"><?php echo date('Y-m-d', strtotime($rev['created_at'])); ?></div>
-                    </div>
-                    <div class="review-stars"><?php echo str_repeat('★', $rev['rating']); ?></div>
-                </div>
-                <div style="font-size:12px; color:#002B5B; font-weight:bold; margin-bottom:5px;"><?php echo htmlspecialchars($rev['item_name']); ?></div>
-                <p class="review-text"><?php echo htmlspecialchars($rev['content']); ?></p>
-            </div>
-        <?php endwhile; ?>
-    <?php else: ?>
-        <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">
-            <?php echo isset($error_msg) ? $error_msg : '目前尚無評價資料'; ?>
-        </p>
-    <?php endif; ?>
-</div>
+    
+    <div id="js-review-container" class="review-hidden-box">
+        <style>
+            /* 這是高明的 CSS 障眼法：只顯示前 3 個評論，第 4 個以後的在畫面上隱藏，但 JS 抓得到 */
+            #js-review-container .review-item { display: none; }
+            #js-review-container .review-item:nth-child(1),
+            #js-review-container .review-item:nth-child(2),
+            #js-review-container .review-item:nth-child(3) { display: block; }
+        </style>
 
+        <?php if (isset($reviews_result) && $reviews_result->num_rows > 0): ?>
+            <?php while($rev = $reviews_result->fetch_assoc()): ?>
+                <div class="review-item">
+                    <div class="review-top">
+                        <div>
+                            <strong style="font-size:14px;"><?php echo htmlspecialchars($rev['reviewer_name'] ?? '匿名'); ?></strong>
+                            <div style="font-size:11px; color:#999;"><?php echo date('Y-m-d', strtotime($rev['created_at'])); ?></div>
+                        </div>
+                        <div class="review-stars"><?php echo str_repeat('★', $rev['rating']); ?></div>
+                    </div>
+                    <div style="font-size:12px; color:#002B5B; font-weight:bold; margin-bottom:5px;" class="js-target-item-name"><?php echo htmlspecialchars($rev['item_name']); ?></div>
+                    <p class="review-text"><?php echo htmlspecialchars($rev['content']); ?></p>
+                </div>
+            <?php endwhile; ?>
+            <?php 
+            // 💡 為了不影響其他地方，我們在撈完資料後將指針重設（安全防禦）
+            $reviews_result->data_seek(0); 
+            ?>
+        <?php else: ?>
+            <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">
+                <?php echo isset($error_msg) ? $error_msg : '目前尚無評價資料'; ?>
+            </p>
+        <?php endif; ?>
+    </div>
+</div>
 <div class="logout-section">
     <a href="logout.php" class="logout-btn">登出</a>
 </div>
@@ -372,6 +465,7 @@ try {
             } 
         }
     });
+    
 </script>
 
 <?php include('footer.php'); ?>
