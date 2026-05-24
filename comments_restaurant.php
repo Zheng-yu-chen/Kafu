@@ -539,7 +539,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
 <?php 
 include('comments_filter.php');
-include('comment_scroll_effect.php');
 include('update_comments.php'); 
 include('delete_comments.php'); 
 include('manage_comment.php');
