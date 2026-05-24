@@ -536,6 +536,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 </script>
+
 <?php 
 include('comments_filter.php');
 include('comment_scroll_effect.php');
