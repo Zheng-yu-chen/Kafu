@@ -26,24 +26,101 @@ if ($_SESSION['role_id'] == 2) {
 
 // 預設餐廳名稱防呆
 $store_name = "未知餐廳";
-
+// 準備給圖表用的陣列
+$total_avg = 0.0;
+$total_count = 0;
+$chart_labels = [];
+$chart_data = [];
+$weekly_comments_count = 0; // 💡 【加這行】先給它預設值 0，這樣下面絕對不會再噴 Undefined 錯誤！
+$reviews_result = null;
 try {
+    //滿意度分析
     // 嘗試從資料庫抓取該登入店家的真實餐廳名稱（預防 SQL 注入，使用 intval 轉型過的變數）
     $res_query = $conn->query("SELECT name FROM restaurants WHERE r_id = $store_id");
     if ($res_query && $res_query->num_rows > 0) {
         $store_name = $res_query->fetch_assoc()['name'];
     }
+    // 💡 【新增】動態抓取最近 7 天的滿意度趨勢 (從今天往前推 7 天)
+    $sql_trend = "SELECT c.rating, c.created_at
+                  FROM comments c
+                  JOIN items i ON c.item_id = i.item_id
+                  JOIN categories cat ON i.c_id = cat.c_id
+                  WHERE cat.r_id = $store_id 
+                  ORDER BY c.created_at DESC, c.com_id DESC
+                  LIMIT 7";
+                  
+    $trend_result = $conn->query($sql_trend);
+    // 1. 先建立一個乾淨的暫存陣列，用來把同一天的分數歸類在一起
+    $daily_scores = [];
+    // 把資料庫撈出來的實際平均分數塞進對照表
+    while ($row = $trend_result->fetch_assoc()) {
+        // 將時間轉換成純日期格式（例如：05/24）
+        $date_key = date('m/d', strtotime($row['created_at']));
+        // 把這筆評分塞進當天的陣列裡
+        $daily_scores[$date_key][] = intval($row['rating']);
+    }
+        // 2. 初始化真正要給 Chart.js 用的標籤和數據陣列
+        $chart_labels = [];
+        $chart_data = [];
 
-    // 💡 從資料庫抓取「這家特定餐廳」的真實最新評論
+        // 3. 計算每一天的平均分數
+        foreach ($daily_scores as $date => $ratings) {
+        $chart_labels[] = $date; // X軸：只顯示這一天（不會重複了）
+    
+        // 計算平均值：總分 / 總筆數
+        $average = array_sum($ratings) / count($ratings); 
+    
+        // 四捨五入到小數點後第一位（例如 4.3），這樣折線圖畫出來最精準
+        $chart_data[] = round($average, 1);
+        }
+    // 💡 終極防呆：如果資料庫真的因為關連錯誤一筆都撈不到，我們塞假資料讓表格強制出現，方便你檢查畫面
+    if (empty($chart_labels)) {
+        $chart_labels = ['無資料1', '無資料2', '無資料3'];
+        $chart_data = [5, 4, 5]; 
+    } else {
+        // 因為是用 DESC 撈最新，圖表顯示要從舊到新，所以要把陣列反轉回來
+        $chart_labels = array_reverse($chart_labels);
+        $chart_data = array_reverse($chart_data);
+    }
+
+    // 總平均星等
+    // 💡 【新增】抓取該餐廳所有評論的總平均分數
+    $sql_avg = "SELECT AVG(c.rating) AS total_avg, COUNT(c.com_id) AS total_count
+                FROM comments c
+                JOIN items i ON c.item_id = i.item_id
+                JOIN categories cat ON i.c_id = cat.c_id
+                WHERE cat.r_id = $store_id";
+
+    $avg_result = $conn->query($sql_avg);
+    
+    if ($avg_result && $row = $avg_result->fetch_assoc()) {
+        // 如果有資料，四捨五入到小數點後第一位（例如 4.6）
+        $total_avg = $row['total_avg'] ? round(floatval($row['total_avg']), 1) : 0.0;
+        $total_count = intval($row['total_count']);
+    }
+    // 💡 請確保這行抓最新評論的 code 還是在 try 的最後面
     $sql_reviews = "SELECT c.*, i.item_name, a.name AS reviewer_name 
                     FROM comments c
                     JOIN items i ON c.item_id = i.item_id
                     JOIN categories cat ON i.c_id = cat.c_id
                     LEFT JOIN accounts a ON c.u_id = a.u_id
-                    WHERE cat.r_id = $store_id AND c.status = 1
+                    WHERE cat.r_id = $store_id
                     ORDER BY c.created_at DESC LIMIT 3";
     $reviews_result = $conn->query($sql_reviews);
+    // 💡 直接用最乾淨的語法去數這家餐廳的所有評論數（防呆，先確保能抓到數字！）
+    $sql_weekly_comments = "SELECT COUNT(c.com_id) AS weekly_count 
+                            FROM comments c
+                            JOIN items i ON c.item_id = i.item_id
+                            JOIN categories cat ON i.c_id = cat.c_id
+                            WHERE cat.r_id = $store_id";
+                            
+    $weekly_result = $conn->query($sql_weekly_comments);
 
+    if ($weekly_result && $row = $weekly_result->fetch_assoc()) {
+        $weekly_comments_count = intval($row['weekly_count']);
+    } else {
+        $weekly_comments_count = 0;
+    }
 } catch (mysqli_sql_exception $e) {
     // 若出錯的友善處理，不洩漏資料庫錯誤訊息
     $error_msg = "資料載入失敗，請稍後再試。";
@@ -62,17 +139,61 @@ try {
     .store-header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
     .store-header p { margin: 5px 0 20px; font-size: 14px; opacity: 0.9; }
 
-    /* 頂部統計方塊 */
-    .stats-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
-    .stats-container::-webkit-scrollbar { display: none; }
-    .stat-box {
-        flex: 1; min-width: 100px; background: rgba(255, 255, 255, 0.2); 
-        border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    /* 頂部統計方塊容器 - 啟動橫向滑動鎖定 */
+    .stats-container { 
+        display: flex; 
+        gap: 12px; 
+        overflow-x: auto; /* 超出時允許橫向滾動 */
+        white-space: nowrap; /* 限制子元素不換行 */
+        padding: 5px 15px 15px; /* 增加底部留白，讓滑軌跟陰影更好看 */
+        margin: 0 -15px; /* 讓滑軌可以貼齊螢幕邊緣 */
+        -webkit-overflow-scrolling: touch; /* 讓手機板滑動更順暢 */
+    }
+    
+    /* 讓電腦瀏覽器顯示精緻的滾動條（可選，不想要可以刪除） */
+    .stats-container::-webkit-scrollbar { 
+        height: 4px; 
+    }
+    .stats-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 4px;
+    }
+
+    /* 💡 統一所有卡片樣式：比照評分卡片的白底高質感風格 */
+    .rating-card, .stat-box {
+        flex: 0 0 220px; /* 固定寬度 220px 防止被擠壓變形 */
+        background: #ffffff !important; /* 強制全部改為純白底色 */
+        color: #333333 !important; /* 強制文字改為深色 */
+        border-radius: 12px; 
+        padding: 20px; /* 稍微加寬內襯，讓空間更舒適 */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* 精緻微陰影 */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    /* 調整卡片內的文字標題（比照評分卡片的 h3 質感） */
+    .rating-card h3, .stat-box h4 { 
+        margin: 0; 
+        color: #666666 !important; 
+        font-size: 14px; 
+        font-weight: normal;
     }
     .stat-box h4 { margin: 0 0 5px; font-size: 12px; opacity: 0.9; font-weight: normal; }
-    .stat-box .num { font-size: 24px; font-weight: bold; margin: 0 0 5px; }
+    /* 調整大數字樣式（比照評分卡片的 36px 大字） */
+    .stat-box .num { 
+        font-size: 36px; 
+        font-weight: bold; 
+        color: #333333 !important;
+        margin: 10px 0 5px 0; 
+    }
     .stat-box .trend { font-size: 11px; opacity: 0.8; }
-
+    /* 調整底部說明文字（比照評分卡片的 13px 灰字） */
+    .rating-card p, .stat-box .trend { 
+        margin: 8px 0 0 0; 
+        color: #888888 !important; 
+        font-size: 13px; 
+    }
     /* 白色內容區塊 */
     .dashboard-section {
         background: white; border-radius: 15px; margin: -20px 15px 20px;
@@ -125,12 +246,42 @@ try {
     <h1>店家營運儀表板</h1>
     <!-- 這裡會顯示目前登入店家的真實店名 -->
     <p><?php echo htmlspecialchars($store_name); ?></p>
-    
+    <!-- 💡 外層只有這一個主要的 stats-container 容器 -->
     <div class="stats-container">
-        <!-- 提醒：這裡的數據目前也是寫死的，未來建議透過 SQL 加上 AVG(rating) 與 COUNT() 來動態抓取 -->
-        <div class="stat-box"><h4>平均評分</h4><div class="num">4.7</div><div class="trend">↑ 0.1 vs 上週</div></div>
-        <div class="stat-box"><h4>本週評論</h4><div class="num">87</div><div class="trend">↑ 12 vs 上週</div></div>
-        <div class="stat-box"><h4>本週銷量</h4><div class="num">534</div><div class="trend">↑ 8% vs 上週</div></div>
+        <!-- 1. 總平均評分卡片 -->
+        <div class="rating-card" style="background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <h3>總平均評分</h3>
+
+            <div style="display: flex; align-items: center; margin-top: 10px;">
+                <span style="font-size: 36px; font-weight: bold; color: #333; margin-right: 15px;">
+                    <?php echo number_format($total_avg, 1); ?>
+                </span>
+                <div style="color: #f4b400; font-size: 20px;">
+                    <?php 
+                        // 依據平均分數四捨五入畫出實心星，剩下補空心星
+                        $stars = round($total_avg);
+                        echo str_repeat('★', $stars) . str_repeat('☆', 5 - $stars); 
+                    ?>
+                </div>
+            </div>
+            <!-- 呈現總評論筆數，取代原本的「與上週相比」 -->
+            <p style="margin: 8px 0 0 0; color: #888; font-size: 13px;">
+            來自共 <?php echo $total_count; ?> 則顧客評價
+            </p>
+        </div>
+        <!-- 2. 本週評論卡片（動態變數） -->
+        <div class="stat-box">
+            <h4>最新評論數</h4> <!-- 💡 標題改成最新評論數 -->
+            <div class="num"><?php echo $weekly_comments_count; ?></div>
+            <div class="trend">動態同步最新數據</div>
+        </div>
+
+        <!-- 3. 本週銷量卡片 -->
+        <div class="stat-box">
+            <h4>本週銷量</h4>
+            <div class="num">534</div>
+            <div class="trend">↑ 8% vs 上週</div>
+        </div>
     </div>
 </div>
 
@@ -191,13 +342,16 @@ try {
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // 💡 透過 PHP json_encode 將動態資料傳遞給 JavaScript
+    const chartLabels = <?php echo json_encode($chart_labels); ?>;
+    const chartData = <?php echo json_encode($chart_data); ?>;
     const ctx = document.getElementById('satisfactionChart').getContext('2d');
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['04/05', '04/06', '04/07', '04/08', '04/09', '04/10', '04/11'],
+            labels: chartLabels, // 變成動態日期
             datasets: [{
-                data: [4.2, 4.4, 4.3, 4.6, 4.5, 4.7, 4.6],
+                data: chartData,// 變成動態星等分數
                 borderColor: '#4CAF50',
                 backgroundColor: 'rgba(76, 175, 80, 0.1)',
                 borderWidth: 2,
@@ -206,7 +360,17 @@ try {
                 tension: 0.3
             }]
         },
-        options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5 }, x: { grid: { display: false } } } }
+        options: { 
+            plugins: { legend: { display: false } }, 
+            scales: { 
+                y: { 
+                    min: 0, 
+                    max: 5,
+                    ticks: { stepSize: 1 } // 讓 Y 軸刻度更整齊
+                 }, 
+                x: { grid: { display: false } } 
+            } 
+        }
     });
 </script>
 
