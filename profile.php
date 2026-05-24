@@ -476,50 +476,50 @@ if ($is_logged_in) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // 1. 圖表安全防護
+        const chartCanvas = document.getElementById('trendChart');
+        if (chartCanvas) {
+            const ctx = chartCanvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: <?php echo json_encode($chart_labels ?? []); ?>,
+                    datasets: [{ 
+                        label: '每日熱量', 
+                        data: <?php echo json_encode($chart_data ?? []); ?>, 
+                        borderColor: '#FF8C42', 
+                        backgroundColor: 'rgba(255, 140, 66, 0.1)', 
+                        borderWidth: 3, 
+                        fill: true, 
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#FF8C42'
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, 
+                        x: { grid: { display: false } } 
+                    } 
+                }
+            });
+        }
+    });
+    </script>
+<?php endif; ?>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. 圖表安全防護
-    const chartCanvas = document.getElementById('trendChart');
-    if (chartCanvas) {
-        const ctx = chartCanvas.getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: <?php echo json_encode($chart_labels ?? []); ?>,
-                datasets: [{ 
-                    label: '每日熱量', 
-                    data: <?php echo json_encode($chart_data ?? []); ?>, 
-                    borderColor: '#FF8C42', 
-                    backgroundColor: 'rgba(255, 140, 66, 0.1)', 
-                    borderWidth: 3, 
-                    fill: true, 
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#FF8C42'
-                }]
-            },
-            options: { 
-                responsive: true,
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, 
-                    x: { grid: { display: false } } 
-                } 
-            }
-        });
-    }
-
-    // 2. 🎯 精準定位改法：直接用 id 綁定，百分之百能觸發
     const notiBtn = document.getElementById('notiBtn');
     const notiMenu = document.getElementById('notiMenu');
 
     if (notiBtn && notiMenu) {
-        // 點擊鈴鐺按鈕
         notiBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            e.stopPropagation(); // 防止事件傳到外面被關閉
-            
-            // 檢查目前有沒有 show，沒有就加上，有就移除
+            e.stopPropagation();
             if (notiMenu.classList.contains('show')) {
                 notiMenu.classList.remove('show');
             } else {
@@ -527,18 +527,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // 點擊選單內部時，不要關閉選單
         notiMenu.addEventListener('click', function (e) {
             e.stopPropagation();
         });
 
-        // 點擊網頁其他任何地方，直接關閉選單
         document.addEventListener('click', function () {
             notiMenu.classList.remove('show');
         });
     }
 });
 </script>
-<?php endif; ?>
+
 
 <?php include('footer.php'); ?>
