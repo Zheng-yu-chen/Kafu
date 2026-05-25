@@ -4,7 +4,7 @@
         
         <input type="hidden" id="targetReportComId" value="">
 
-        <form id="reportForm" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+        <form id="reportForm" onchange="toggleOtherTextarea()" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
             <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; color: #444; cursor: pointer;">
                 <input type="radio" name="report_reason" value="1" required checked> 不雅用語
             </label>
@@ -23,6 +23,11 @@
             <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; color: #444; cursor: pointer;">
                 <input type="radio" name="report_reason" value="6"> 內容有害
             </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; color: #444; cursor: pointer;">
+                <input type="radio" name="report_reason" value="7" id="reasonOtherRadio"> 其他原因
+            </label>
+
+            <textarea id="otherReasonTextarea" placeholder="請具體說明檢舉原因（限50字）..." max-length="50" style="display: none; width: 100%; height: 60px; padding: 8px; border-radius: 8px; border: 1px solid #ddd; resize: none; font-size: 13px; box-sizing: border-box; outline: none; margin-top: 5px;"></textarea>
         </form>
 
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
@@ -33,6 +38,19 @@
 </div>
 
 <script>   
+    // 🎯 控制動態輸入框顯示/隱藏的函式
+    function toggleOtherTextarea() {
+        const otherRadio = document.getElementById('reasonOtherRadio');
+        const textarea = document.getElementById('otherReasonTextarea');
+        if (otherRadio && otherRadio.checked) {
+            textarea.style.display = 'block';
+            textarea.focus();
+        } else {
+            textarea.style.display = 'none';
+            textarea.value = ''; 
+        }
+    }
+
     function reportComment(comId) {
         document.getElementById('targetReportComId').value = comId;
         document.getElementById('reportModal').style.display = 'flex';
@@ -42,6 +60,8 @@
 
     function closeReportModal() {
         document.getElementById('reportModal').style.display = 'none';
+        document.getElementById('reportForm').reset();
+        document.getElementById('otherReasonTextarea').style.display = 'none'; // 隱藏輸入框
         const toolbar = document.querySelector('footer') || document.querySelector('nav') || document.querySelector('.footer');
         if (toolbar) toolbar.style.display = 'flex';
     }
@@ -56,12 +76,19 @@
         }
         
         const reason = reasonElement.value;
+        const otherText = document.getElementById('otherReasonTextarea').value.trim();
+
+        if (reason === '7' && otherText === '') {
+            alert('請輸入具體的其他檢舉原因！');
+            return;
+        }
+        
         const formData = new FormData();
         formData.append('com_id', comId);
-        
-        // 🎯 修正：將這裡改成 reason_id，完美對接後端的 $_POST['reason_id']！
         formData.append('reason_id', reason); 
+        formData.append('other_text', otherText); 
 
+    
         fetch('report_api.php', {
             method: 'POST',
             body: formData
@@ -71,8 +98,19 @@
             if (data.success) {
                 alert('感謝您的回報！我們將盡快審查此內容。');
                 closeReportModal();
+                
+                const cardId = 'comment-card-' + comId;
+                const targetCard = document.getElementById(cardId);
+                if (targetCard) {
+                    targetCard.style.transition = 'all 0.4s ease';
+                    targetCard.style.opacity = '0';
+                    targetCard.style.transform = 'scale(0.9)';
+                    setTimeout(() => {
+                        targetCard.remove(); 
+                    }, 400);
+                }
+
             } else {
-                // 這裡會精確彈出後端傳回來的錯誤（例如未登入、或是資料表還沒建）
                 alert(data.message);
             }
         })
