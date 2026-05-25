@@ -29,11 +29,11 @@ $res_bugs = $conn->query("SELECT COUNT(*) AS cnt FROM bugreports WHERE status = 
 if ($res_bugs && $row = $res_bugs->fetch_assoc()) { $pending_bugs = $row['cnt']; }
 
 // 撈取待處理的檢舉數量
-$pending_complaints = 0;
-// 加上防呆：如果 complaints 表還沒建，就不會報錯
+$pending_report = 0;
+
 try {
-    $res_comp = $conn->query("SELECT COUNT(*) AS cnt FROM complaints WHERE status = 0");
-    if ($res_comp && $row = $res_comp->fetch_assoc()) { $pending_complaints = $row['cnt']; }
+    $res_comp = $conn->query("SELECT COUNT(*) AS cnt FROM userreports WHERE status = 0");
+    if ($res_comp && $row = $res_comp->fetch_assoc()) { $pending_report = $row['cnt']; }
 } catch (Exception $e) { }
 
 ?>
@@ -96,7 +96,7 @@ try {
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-            <div class="stat-val <?php echo ($pending_complaints == 0) ? 'safe' : ''; ?>"><?php echo $pending_complaints; ?></div>
+            <div class="stat-val <?php echo ($pending_report == 0) ? 'safe' : ''; ?>"><?php echo $pending_report; ?></div>
             <div class="stat-label">待審核檢舉</div>
         </div>
     </div>
@@ -123,7 +123,7 @@ try {
         <div class="section-header">⚖️ 系統審核與客服</div>
         <a href="admin_complaints.php" class="menu-link">
             <div class="menu-text">
-                <h4>檢舉審核管理 <?php if($pending_complaints > 0) echo "<span style='color:red; font-size:12px;'>($pending_complaints)</span>"; ?></h4>
+                <h4>檢舉審核管理 <?php if($pending_report > 0) echo "<span style='color:red; font-size:12px;'>($pending_report)</span>"; ?></h4>
                 <p>審核不當留言與違規使用者</p>
             </div>
             <div style="color:#ccc;">❯</div>

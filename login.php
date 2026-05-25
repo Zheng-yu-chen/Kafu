@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['name'] = $user['name'];
         $_SESSION['role_id'] = $user['role_id'];
         $_SESSION['r_id'] = $user['r_id'];
+        $_SESSION['has_warning'] = $user['has_warning'];
 
         if ($remember) {
             setcookie('saved_account', $acc, time() + (30 * 24 * 60 * 60), "/", "", false, true);

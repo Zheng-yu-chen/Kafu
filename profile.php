@@ -1,5 +1,49 @@
 <?php
+session_start();
 include('db.php');
+
+// 檢查目前登入的學生，資料庫有沒有被標記未讀警告 (has_warning = 1)
+
+// 🎯 關鍵新增：檢查目前登入的學生，資料庫有沒有被標記未讀警告 (has_warning = 1)
+$current_uid = isset($_SESSION['u_id']) ? intval($_SESSION['u_id']) : 0;
+if ($current_uid > 0) {
+    // 從資料庫即時撈取最新的 has_warning 狀態
+    $check_warn_res = $conn->query("SELECT has_warning FROM accounts WHERE u_id = $current_uid");
+    if ($check_warn_res && $check_warn_res->num_rows > 0) {
+        $user_warn_status = $check_warn_res->fetch_assoc();
+        if ($user_warn_status['has_warning'] == 1) {
+            $reason_text = "違反社群規範";
+            $sql_get_reason = "SELECT c.reason, c.other_reason_text 
+                               FROM userreports c
+                               JOIN comments cm ON c.com_id = cm.com_id
+                               WHERE cm.u_id = $current_uid
+                               ORDER BY c.created_at DESC LIMIT 1";
+            $reason_res = $conn->query($sql_get_reason);
+            
+            if ($reason_res && $reason_res->num_rows > 0) {
+                $reason_row = $reason_res->fetch_assoc();
+                // 轉換代碼為中文原因
+                switch ($reason_row['reason']) {
+                    case 1: $reason_text = "不雅用語"; break;
+                    case 2: $reason_text = "不雅照片"; break;
+                    case 3: $reason_text = "偏離主題"; break;
+                    case 4: $reason_text = "垃圾內容"; break;
+                    case 5: $reason_text = "歧視或仇恨言論"; break;
+                    case 6: $reason_text = "內容有害"; break;
+                    case 7: $reason_text = "其他原因（" . $reason_row['other_reason_text'] . "）"; break;
+                }
+            }
+
+            $conn->query("UPDATE accounts SET has_warning = 0 WHERE u_id = $current_uid");
+            
+
+            echo "<script>
+                alert('【⚠️ KaFu系統違規警告通知】\\n\\n您近期遭到其他使用者檢舉，經管理員審查確認已違反規範！\\n\\n違規原因：【" . $reason_text . "】\\n\\n若再次違規，您的帳號將會遭到停權封鎖。');
+            </script>";
+        }
+    }
+}
+
 include('header.php');
 
 // 1. 檢查登入狀態
