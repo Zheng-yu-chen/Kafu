@@ -103,6 +103,8 @@ if ($is_logged_in) {
     .notification-dropdown {
         position: relative;
         display: inline-block;
+        margin-left: auto; /* 👈 關鍵核心：自動向左塞滿空間，把鈴鐺推到最右邊 */
+        margin-right: 10px; /* 👈 加分微調：讓鈴鐺跟最右邊邊緣保持一點點呼吸空間 */
     }
 
     /* 鈴鐺按鈕本體 */
