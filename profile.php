@@ -34,7 +34,7 @@ if ($is_logged_in) {
     // B. 抓取今日進度：一併加總 price, fat, carbs
     $today = date('Y-m-d');
     $sql_stats = "SELECT 
-                   SUM(COALESCE(i.calories, l.total_calories)) as total_cal, 
+                    SUM(COALESCE(i.calories, l.total_calories)) as total_cal, 
                     SUM(COALESCE(i.protein, l.total_protein)) as total_pro,
                     SUM(CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END) as total_price, 
                     SUM(COALESCE(NULLIF(l.total_fat, 0), i.fat, 0)) as total_fat, 
@@ -84,12 +84,13 @@ if ($is_logged_in) {
     $announcement_query = "SELECT title, content, created_at FROM announcements ORDER BY created_at DESC LIMIT 5";
     $announcement_result = $conn->query($announcement_query);
 
-    // 2. 另外寫一個查詢，去算資料庫「總共有幾則」公告，這才是真正的小紅點數字
-    $count_query = "SELECT COUNT(id) AS total FROM announcements";
+    // 🎯 修正核心 1：算總數，同時拿到最新一則公告的 ID 作為已讀標記
+    $count_query = "SELECT COUNT(id) AS total, MAX(id) AS latest_id FROM announcements";
     $count_result = $conn->query($count_query);
     $count_row = $count_result ? $count_result->fetch_assoc() : null;
 
     $announcement_count = $count_row ? intval($count_row['total']) : 0;
+    $latest_announcement_id = $count_row && $count_row['latest_id'] ? intval($count_row['latest_id']) : 0;
 
 ?>
 
@@ -319,30 +320,25 @@ if ($is_logged_in) {
 
         <p><?php echo $is_logged_in ? "帳號：" . htmlspecialchars($user_account) : "登入後開啟健康追蹤功能"; ?></p>
     </div>
-    <!-- 店家通知鈴鐺組件開始 -->
+    
     <div class="notification-dropdown">
-        <button class="notification-trigger" id="notiBtn" type="button">
-            <!-- 鈴鐺圖示（使用 Font Awesome） -->
+        <button class="notification-trigger" id="notiBtn" type="button" data-latest-id="<?php echo $latest_announcement_id; ?>">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
             <i class="fa-solid fa-bell"></i>
             
-            <!-- 檢查若有公告，就吐出小紅點和數量 -->
             <?php if ($announcement_count > 0): ?>
-                <span class="notification-badge"><?php echo $announcement_count; ?></span>
+                <span class="notification-badge" id="notiBadge"><?php echo $announcement_count; ?></span>
             <?php endif; ?>
         </button>
         
-        <!-- 下拉公告卡片 -->
         <div class="notification-menu" id="notiMenu">
             <div class="notification-header">最新店家公告</div>
             <div class="notification-list">
                 <?php 
-                // 📍 注意 1：因為前面可能被登入的人讀過一次，訪客要讀時，強制把指標歸零重頭讀取
                 if ($announcement_result) {
                     $announcement_result->data_seek(0);
                 }
                 if ($announcement_count > 0 && $announcement_result) {    
-                    // 迴圈讀取資料庫撈出來的每一筆公告
                     while($row = $announcement_result->fetch_assoc()) {
                         ?>
                         <div class="notification-item">
@@ -353,15 +349,13 @@ if ($is_logged_in) {
                         <?php
                     }
                 } else {
-                    // 資料庫沒資料時顯示的提示
                     echo '<div class="notification-empty">目前沒有任何公告</div>';
                 }
                 ?>
             </div>
         </div>
     </div>
-<!-- 店家通知鈴鐺組件結束 -->
-    <?php if (!$is_logged_in): ?>
+<?php if (!$is_logged_in): ?>
         <a href="login.php" class="btn-login-top">登入</a>
     <?php endif; ?>
 </div>
@@ -376,18 +370,16 @@ if ($is_logged_in) {
         </div>
 
         <?php 
-        // 💡 1. 處理百分比、進度條顏色與剩餘熱量
         $percentage = ($goal_cal > 0) ? round(($display_cal / $goal_cal) * 100) : 0;
-        $bar_width = ($percentage > 100) ? 100 : $percentage; // 最高不超過100%防破版
+        $bar_width = ($percentage > 100) ? 100 : $percentage; 
         $remaining_cal = $goal_cal - $display_cal;
 
-        // 決定進度條顏色
         if ($percentage < 80) {
-            $bar_color = "#4CAF50"; // 🟢 安全範圍 (綠色)
+            $bar_color = "#4CAF50"; 
         } elseif ($percentage <= 100) {
-            $bar_color = "#FF8C42"; // 🟠 快達標 (橘色)
+            $bar_color = "#FF8C42"; 
         } else {
-            $bar_color = "#E53935"; // 🔴 已超標 (紅色)
+            $bar_color = "#E53935"; 
         }
         ?>
 
@@ -480,7 +472,6 @@ if ($is_logged_in) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // 1. 圖表安全防護
         const chartCanvas = document.getElementById('trendChart');
         if (chartCanvas) {
             const ctx = chartCanvas.getContext('2d');
@@ -513,15 +504,38 @@ if ($is_logged_in) {
     });
     </script>
 <?php endif; ?>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const notiBtn = document.getElementById('notiBtn');
     const notiMenu = document.getElementById('notiMenu');
+    const notiBadge = document.getElementById('notiBadge');
 
     if (notiBtn && notiMenu) {
+        // 💡 剛載入網頁時立馬檢查：如果上次點過的就是目前最新這則公告，紅點直接隱藏！
+        if (notiBadge) {
+            const lastReadId = localStorage.getItem('last_read_announcement_id');
+            const currentLatestId = notiBtn.getAttribute('data-latest-id');
+            if (lastReadId === currentLatestId) {
+                notiBadge.style.display = 'none';
+            }
+        }
+
         notiBtn.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            
+            // 💡 點擊鈴鐺看公告的當下：把目前的最新公告 ID 刻進手機記憶體
+            if (notiBadge) {
+                const currentLatestId = notiBtn.getAttribute('data-latest-id');
+                localStorage.setItem('last_read_announcement_id', currentLatestId);
+                
+                // 讓小紅點優雅地淡出消失
+                notiBadge.style.transition = 'opacity 0.3s ease';
+                notiBadge.style.opacity = '0';
+                setTimeout(() => { notiBadge.style.display = 'none'; }, 300);
+            }
+
             if (notiMenu.classList.contains('show')) {
                 notiMenu.classList.remove('show');
             } else {
@@ -539,6 +553,5 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 </script>
-
 
 <?php include('footer.php'); ?>
