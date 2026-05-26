@@ -168,7 +168,7 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     .item-calories { font-weight: bold; color: var(--primary-orange, #FF8C42); }
     .item-actions { display: flex; gap: 10px; margin-top: 12px; }
     .btn-edit, .btn-delete { background: white; border: 1px solid #ddd; font-size: 12px; cursor: pointer; padding: 8px 12px; border-radius: 10px; font-weight: bold; transition: 0.2s; }
-    .btn-edit { color: #2196F3; border-color: #bbdefb; }
+    .btn-edit { color: #6aafe7; border-color: #bbdefb; }
     .btn-edit:hover { background: #e3f2fd; }
     .btn-delete { color: #f44336; border-color: #ffcdd2; }
     .btn-delete:hover { background: #ffebee; }
@@ -217,7 +217,7 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     
     .action-icons { display: flex; flex-direction: column; justify-content: center; gap: 6px; margin-left: 5px; border-left: 1px solid #eee; padding-left: 10px; }
     .btn-edit, .btn-delete { background: white; border: 1px solid #ddd; font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-weight: bold; transition: 0.2s; }
-    .btn-edit { color: #2196F3; border-color: #bbdefb; }
+    .btn-edit { color: #6aafe7; border-color: #bbdefb; }
     .btn-edit:hover { background: #e3f2fd; }
     .btn-delete { color: #f44336; border-color: #ffcdd2; }
     .btn-delete:hover { background: #ffebee; }
@@ -332,7 +332,7 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
 <!-- ================= 💡 編輯紀錄彈窗 (擴充版) ================= -->
 <div id="editModal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-header" style="background-color: #2196F3;">
+        <div class="modal-header" style="background-color: #6aafe7;">
             <div><h2>編輯飲食紀錄</h2><p>修改已存在的數據</p></div>
             <button onclick="closeEditModal()" style="background:none; border:none; color:white; font-size:24px;">×</button>
         </div>
@@ -366,7 +366,7 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
                         <label><input type="radio" name="daily_meal" value="4" id="edit_meal_4"> 點心</label>
                     </div>
                 </div>
-                <button type="submit" style="width:100%; background:#2196F3; color:white; border:none; padding:15px; border-radius:12px; font-weight:bold;">儲存修改</button>
+                <button type="submit" style="width:100%; background:#6aafe7; color:white; border:none; padding:15px; border-radius:12px; font-weight:bold;">儲存修改</button>
             </div>
         </form>
     </div>

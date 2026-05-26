@@ -12,55 +12,64 @@ if (isset($_COOKIE['saved_password'])) {
 $cookie_checked = (!empty($saved_account) && !empty($saved_password)) ? 'checked' : '';
 
 // 當表單送出時執行登入驗證
+// 當表單送出時執行登入驗證
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $acc = $_POST['accounts'];
     $pwd = $_POST['password'];
     $remember = isset($_POST['remember_me']); 
 
-    $sql = "SELECT * FROM accounts WHERE accounts = ? AND password = ?";
+    $sql = "SELECT * FROM accounts WHERE accounts = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $acc, $pwd);
+    $stmt->bind_param("s", $acc);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
         
-        // 🌟 關鍵新增：檢查帳號是否被封鎖
-        if (isset($user['is_blocked']) && $user['is_blocked'] == 1) {
-            echo "<script>alert('您的帳號已被管理員停權！\\n無法登入，如有疑問請聯繫系統管理。'); window.location.href='login.php';</script>";
+        // 🌟 關鍵修正：將所有成功邏輯放在這裡面
+        if (password_verify($pwd, $user['password'])) {
+            
+            // 3. 檢查帳號是否被封鎖
+            if (isset($user['is_blocked']) && $user['is_blocked'] == 1) {
+                echo "<script>alert('您的帳號已被管理員停權！\\n無法登入，如有疑問請聯繫系統管理。'); window.location.href='login.php';</script>";
+                exit();
+            }
+            
+            // 登入成功，設定 Session
+            $_SESSION['u_id'] = $user['u_id'];
+            $_SESSION['name'] = $user['name'];
+            $_SESSION['role_id'] = $user['role_id'];
+            $_SESSION['r_id'] = $user['r_id'];
+            $_SESSION['has_warning'] = $user['has_warning'];
+
+            // 設定 Cookie
+            if ($remember) {
+                setcookie('saved_account', $acc, time() + (30 * 24 * 60 * 60), "/", "", false, true);
+                setcookie('saved_password', base64_encode($pwd), time() + (30 * 24 * 60 * 60), "/", "", false, true);
+            } else {
+                setcookie('saved_account', '', time() - 3600, "/");
+                setcookie('saved_password', '', time() - 3600, "/");
+            }
+
+            // 根據角色跳轉
+            if ($user['role_id'] == 3) {
+                echo "<script>window.location.href = 'profile.php';</script>";
+            } else if ($user['role_id'] == 2) {
+                echo "<script>window.location.href = 'store_profile.php';</script>";
+            } else if ($user['role_id'] == 1) {
+                echo "<script>window.location.href = 'admin_dashboard.php';</script>";
+            }
             exit();
-        }
 
-        // 登入成功寫入 Session
-        $_SESSION['u_id'] = $user['u_id'];
-        $_SESSION['name'] = $user['name'];
-        $_SESSION['role_id'] = $user['role_id'];
-        $_SESSION['r_id'] = $user['r_id'];
-        $_SESSION['has_warning'] = $user['has_warning'];
-
-        if ($remember) {
-            setcookie('saved_account', $acc, time() + (30 * 24 * 60 * 60), "/", "", false, true);
-            setcookie('saved_password', base64_encode($pwd), time() + (30 * 24 * 60 * 60), "/", "", false, true);
         } else {
-            setcookie('saved_account', '', time() - 3600, "/");
-            setcookie('saved_password', '', time() - 3600, "/");
+            $error_msg = '帳號或密碼錯誤！';
         }
-
-        if ($user['role_id'] == 3) {
-            echo "<script>window.location.href = 'profile.php';</script>";
-        } else if ($user['role_id'] == 2) {
-            echo "<script>window.location.href = 'store_profile.php';</script>";
-        } else if ($user['role_id'] == 1) {
-            echo "<script>window.location.href = 'admin_dashboard.php';</script>";
-        }
-        exit();
     } else {
-        $error_msg = '帳號或密碼錯誤，請重新輸入！';
+        $error_msg = '帳號或密碼錯誤！';
     }
 }
 include('header.php');
-
 ?>
 
 <style>

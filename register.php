@@ -11,26 +11,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $pwd = $_POST['password'];
     $role_id = 3; // 預設為一般學生
     $goal_cal = 2000; // 預設目標熱量
+    if (!isset($_POST['agree'])) {
+        $error_msg = '您必須勾選同意隱私條款與免責聲明才能註冊。';
+    } 
+    // 2. 帳號格式驗證
+    elseif (!preg_match('/^[a-zA-Z0-9]{1,10}$/', $_POST['accounts'])) {
+        $error_msg = '帳號格式錯誤：僅限英文與數字，且長度不得超過 10 個字元。';
+    }
+    
+    // 接著才是密碼驗證與註冊邏輯
+    elseif (!preg_match('/^[a-zA-Z0-9]{1,20}$/', $pwd)) {
+        $error_msg = '密碼格式錯誤：僅限英文與數字，且長度不得超過 20 個字元。';
+    } 
+    else {
+        // 2. 檢查帳號是否已存在
+        $check_sql = "SELECT * FROM accounts WHERE accounts = ?";
+        $stmt = $conn->prepare($check_sql);
+        $stmt->bind_param("s", $acc);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-    $check_sql = "SELECT * FROM accounts WHERE accounts = ?";
-    $stmt = $conn->prepare($check_sql);
-    $stmt->bind_param("s", $acc);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $error_msg = '此帳號已經註冊過！請直接登入。';
-    } else {
-        // 將新資料寫入資料庫
-        $insert_sql = "INSERT INTO accounts (name, accounts, password, role_id, goal_cal) VALUES (?, ?, ?, ?, ?)";
-        $insert_stmt = $conn->prepare($insert_sql);
-        $insert_stmt->bind_param("sssii", $name, $acc, $pwd, $role_id, $goal_cal);
-        
-        if ($insert_stmt->execute()) {
-            echo "<script>alert('註冊成功！請使用新帳號登入。'); window.location.href='login.php';</script>";
-            exit();
+        if ($result->num_rows > 0) {
+            $error_msg = '此帳號已經註冊過！請直接登入。';
         } else {
-            $error_msg = '註冊失敗，請稍後再試。';
+            // 3. 🌟 關鍵安全性更新：密碼雜湊加密 (Hash)
+            $hashed_password = password_hash($pwd, PASSWORD_DEFAULT);
+
+            // 4. 將加密後的密碼寫入資料庫
+            $insert_sql = "INSERT INTO accounts (name, accounts, password, role_id, goal_cal) VALUES (?, ?, ?, ?, ?)";
+            $insert_stmt = $conn->prepare($insert_sql);
+            $insert_stmt->bind_param("sssii", $name, $acc, $hashed_password, $role_id, $goal_cal);
+            
+            if ($insert_stmt->execute()) {
+                echo "<script>alert('註冊成功！請使用新帳號登入。'); window.location.href='login.php';</script>";
+                exit();
+            } else {
+                $error_msg = '註冊失敗，請稍後再試。';
+            }
         }
     }
 }
@@ -121,14 +138,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="input-group">
-                <label>帳號</label>
-                <input type="text" name="accounts" placeholder="請輸入帳號" required autocomplete="off">
-            </div>
+    <label>帳號 (限英文與數字，最多10字)</label>
+    <input type="text" name="accounts" 
+           placeholder="請輸入帳號" 
+           pattern="[a-zA-Z0-9]{1,10}" 
+           maxlength="10" 
+           title="帳號僅限英文與數字，長度不能超過 10 個字元"
+           required autocomplete="off">
+</div>
             
             <div class="input-group">
-                <label>設定密碼</label>
-                <input type="password" name="password" placeholder="請輸入密碼" required>
-            </div>
+    <label>設定密碼 (限英文與數字，最多20字)</label>
+    <input type="password" name="password" 
+           placeholder="請輸入密碼" 
+           pattern="[a-zA-Z0-9]{1,20}" 
+           maxlength="20"
+           title="密碼僅限英文與數字，長度不能超過 20 個字元"
+           required autocomplete="off">
+</div>
+<div class="input-group" style="margin: 15px 0; font-size: 13px;">
+    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #666;">
+        <input type="checkbox" name="agree" required style="width: auto; margin-top: 3px;">
+        <span>
+            我已閱讀並同意 <a href="privacy.php" target="_blank" style="color: var(--fujen-blue, #002B5B);">隱私權條款</a>
+            且了解本系統提供的熱量數值「僅供參考」。
+        </span>
+    </label>
+</div>
             
             <button type="submit" class="submit-btn">完成註冊</button>
 
@@ -137,6 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="footer-text">
         Fu Jen Catholic University • 輔仁大學<br>
-        Information Management Sophomore Project
+        Precision Nutrition & Calorie Tracking
     </div>
 </div>

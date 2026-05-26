@@ -26,7 +26,7 @@ if (isset($_SESSION['u_id']) && isset($_POST['log_id'])) {
                 total_carbs = ?,     -- 🌟 補上碳水欄位
                 daily_meal = ?, 
                 price = ?,
-                recorded_at = STR_TO_DATE(CONCAT(?, ' ', TIME(recorded_at)), '%Y-%m-%d %H:%i:%s')
+                recorded_at = NOW()   -- 🌟 直接改為當前資料庫時間
             WHERE log_id = ? AND u_id = ?";
             
     $stmt = $conn->prepare($sql);
@@ -38,17 +38,16 @@ if (isset($_SESSION['u_id']) && isset($_POST['log_id'])) {
     // 🌟 修正後的完美參數綁定：
     // s = 字串 (String), i = 整數 (Integer), d = 浮點數 (Double)
     // 總共 10 個問號對應 10 個參數，格式字串為 "sidddisdii"
-   $stmt->bind_param("sidddidsii", 
-        $new_name,   // s -> manual_item_name
-        $new_cal,    // i -> total_calories
-        $new_pro,    // d -> total_protein
-        $new_fat,    // d -> total_fat      
-        $new_carbs,  // d -> total_carbs    
-        $new_meal,   // i -> daily_meal
-        $new_price,  // d -> price (修正為 d)
-        $new_date,   // s -> CONCAT(?, ...) (修正為 s)
-        $log_id,     // i -> WHERE log_id = ?
-        $u_id        // i -> AND u_id = ?
+   $stmt->bind_param("sidddisii", 
+        $new_name,   
+        $new_cal,    
+        $new_pro,    
+        $new_fat,       
+        $new_carbs,    
+        $new_meal,   
+        $new_price,  
+        $log_id,     // 此參數對應 WHERE log_id = ?
+        $u_id        // 此參數對應 AND u_id = ?
     );
     
     if ($stmt->execute()) {
