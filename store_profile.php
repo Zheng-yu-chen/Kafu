@@ -140,30 +140,44 @@ try {
     $reviews_result = $conn->query($sql_reviews);
     
 } catch (mysqli_sql_exception $e) {
-    // 💡 抓蟲終極武器：如果畫面還是沒出來，請把下面這行的註解雙斜線刪掉！
-    // die("SQL崩潰原因: " . $e->getMessage());
     $error_msg = "資料載入失敗，請稍後再試。";
 }
 ?>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-    .btn-publish-announcement {
-        position: absolute; top: 25px; right: 20px; padding: 6px 14px;
-        background-color: #FF9800; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.6);
-        text-decoration: none; border-radius: 20px; font-size: 13px; font-weight: 500;
-        letter-spacing: 0.5px; transition: all 0.2s ease; z-index: 99;
-    }
-    .btn-publish-announcement:hover { background-color: #ffffff; color: #388E3C; border-color: #ffffff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
     body { background-color: #f4f7f9; padding-bottom: 20px; font-family: sans-serif; }
-    .store-header { background: linear-gradient(135deg, #4CAF50, #388E3C); color: white; padding: 40px 20px 60px; position: relative; }
-    .store-header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
-    .store-header p { margin: 5px 0 20px; font-size: 14px; opacity: 0.9; }
-    .stats-container { display: flex; gap: 12px; overflow-x: auto; white-space: nowrap; padding: 5px 15px 15px; margin: 0 -15px; -webkit-overflow-scrolling: touch; }
-    .rating-card, .stat-box { flex: 0 0 220px; background: #ffffff !important; color: #333333 !important; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
-    .rating-card h3, .stat-box h4 { margin: 0; color: #666666 !important; font-size: 14px; font-weight: normal; }
-    .stat-box .num { font-size: 36px; font-weight: bold; color: #333333 !important; margin: 10px 0 5px 0; }
-    .rating-card p, .stat-box .trend { margin: 8px 0 0 0; color: #888888 !important; font-size: 13px; }
-    .dashboard-section { background: #ffffff; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+    
+    /* --- 統一的輔大藍頂部設計 --- */
+    .profile-header { background-color: #002B5B; color: white; padding: 50px 20px 80px; display: flex; align-items: center; gap: 15px; position: relative; }
+    .avatar-circle { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; flex-shrink: 0;}
+    
+    /* 確保 user-info 佔滿剩餘寬度，防止跑版 */
+    .user-info { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow: hidden; }
+    .user-info h2 { margin: 0; font-size: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-info p { margin: 0; font-size: 13px; opacity: 0.8; }
+    .admin-badge { background: #FF8C42; color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: bold; align-self: flex-start; margin-bottom: 4px; }
+
+    /* --- 新增公告按鈕 --- */
+    .btn-publish-announcement {
+        padding: 8px 16px; /* 🌟 加大了內距，讓按鈕變大 */
+        background-color: #FF8C42; color: #ffffff; border: none;
+        text-decoration: none; border-radius: 20px; font-size: 13px; /* 🌟 加大了字體 */
+        font-weight: bold; transition: all 0.2s ease; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        white-space: nowrap; flex-shrink: 0; /* 防止按鈕被壓縮 */
+    }
+    .btn-publish-announcement:active { transform: scale(0.95); }
+
+    /* --- 懸浮整合卡片 --- */
+    .stats-card-combined { background: white; border-radius: 15px; padding: 20px; margin: -40px 20px 20px; position: relative; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; justify-content: space-around; text-align: center; }
+    .stat-item { flex: 1; }
+    .stat-val { font-size: 24px; font-weight: 900; color: #FF8C42; margin-bottom: 5px; }
+    .stat-label { font-size: 12px; color: #888; font-weight: bold; line-height: 1.4; }
+    .stat-divider { width: 1px; background: #eee; }
+
+    /* --- 區塊設定 --- */
+    .dashboard-section { background: #ffffff; border-radius: 12px; padding: 20px; margin: 0 20px 25px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
     .section-title { font-size: 16px; font-weight: 600; color: #333333; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
     
     .ranking-list { display: flex; flex-direction: column; gap: 12px; }
@@ -184,126 +198,123 @@ try {
     .review-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
     .review-stars { color: #FFC107; font-size: 12px; }
     .review-text { font-size: 13px; color: #555; line-height: 1.5; margin: 0; }
+    
     .logout-section { text-align: center; margin: 30px 0 100px; }
     .logout-btn { display: inline-block; background-color: white; color: #F44336; border: 1.5px solid #FFCDD2; padding: 10px 40px; border-radius: 25px; text-decoration: none; font-size: 15px; font-weight: bold; }
 </style>
 
-<div class="store-header">
-    <a href="publish_announcement.php" class="btn-publish-announcement">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-        <i class="fa-solid fa-bullhorn" style="margin-right: 4px;"></i>新增公告
-    </a>
-    <h1>店家營運儀表板</h1>
-    <div>
-        <p><?php echo htmlspecialchars($store_name); ?></p>
-    </div>
-    <div class="stats-container">
-        <div class="rating-card">
-            <h3>總平均評分</h3>
-            <div style="display: flex; align-items: center; margin-top: 10px;">
-                <span style="font-size: 36px; font-weight: bold; color: #333; margin-right: 15px;">
-                    <?php echo number_format($total_avg, 1); ?>
-                </span>
-                <div style="color: #f4b400; font-size: 20px;">
-                    <?php 
-                        $stars = round($total_avg);
-                        echo str_repeat('★', $stars) . str_repeat('☆', 5 - $stars); 
-                    ?>
-                </div>
+<div class="mobile-wrapper">
+    <div class="profile-header">
+        <div class="avatar-circle">🏪</div>
+        
+        <div class="user-info">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h2><?php echo htmlspecialchars($store_name); ?></h2>
+                <a href="publish_announcement.php" class="btn-publish-announcement">
+                    <i class="fa-solid fa-bullhorn" style="margin-right: 4px;"></i>新增公告
+                </a>
             </div>
-            <p>來自共 <?php echo $total_count; ?> 則顧客評價</p>
+            <p>店家營運中心</p>
         </div>
-        <div class="stat-box">
-            <h4>最新評論數</h4> 
-            <div class="num"><?php echo $weekly_comments_count; ?></div>
-            <div class="trend">動態同步最新數據</div>
+        
+    </div>
+
+    <div class="stats-card-combined">
+        <div class="stat-item">
+            <div class="stat-val">★ <?php echo number_format($total_avg, 1); ?></div>
+            <div class="stat-label">總平均評分<br><span style="font-size:10px; font-weight:normal; color:#999;">(共 <?php echo $total_count; ?> 則)</span></div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <div class="stat-val" style="color: #002B5B;"><?php echo $weekly_comments_count; ?></div>
+            <div class="stat-label">最新評論數<br><span style="font-size:10px; font-weight:normal; color:#999;">(動態同步)</span></div>
         </div>
     </div>
-</div>
 
-<div class="dashboard-section">
-    <div class="section-title"><span>📈</span> 滿意度趨勢</div>
-    <canvas id="satisfactionChart" height="120"></canvas>
-</div>
+    <div class="dashboard-section">
+        <div class="section-title"><span>📈</span> 滿意度趨勢</div>
+        <canvas id="satisfactionChart" height="120"></canvas>
+    </div>
 
-<div class="dashboard-section">
-    <div class="section-title"><span style="color:#FF8C42">⭐</span> 本店熱門餐點排行</div>
-    <div class="ranking-list">
-        <?php if (!empty($hot_items_list)): ?>
-            <?php foreach ($hot_items_list as $index => $item): ?>
-                <?php
-                    $medals = ['🥇', '🥈', '🥉'];
-                    $medal = $medals[$index] ?? '🔹';
-                ?>
-                <div class="ranking-item">
-                    <div class="rank-left">
-                        <span style="font-size:18px; margin-right:5px;"><?php echo $medal; ?></span>
-                        <div class="rank-info">
-                            <h5><?php echo htmlspecialchars($item['item_name']); ?></h5>
-                            <p>(<?php echo $item['item_count']; ?> 則評論)</p>
+    <div class="dashboard-section">
+        <div class="section-title"><span style="color:#FF8C42">⭐</span> 本店熱門餐點排行</div>
+        <div class="ranking-list">
+            <?php if (!empty($hot_items_list)): ?>
+                <?php foreach ($hot_items_list as $index => $item): ?>
+                    <?php
+                        $medals = ['🥇', '🥈', '🥉'];
+                        $medal = $medals[$index] ?? '🔹';
+                    ?>
+                    <div class="ranking-item">
+                        <div class="rank-left">
+                            <span style="font-size:18px; margin-right:5px;"><?php echo $medal; ?></span>
+                            <div class="rank-info">
+                                <h5><?php echo htmlspecialchars($item['item_name']); ?></h5>
+                                <p>(<?php echo $item['item_count']; ?> 則評論)</p>
+                            </div>
+                        </div>
+                        <div class="rank-score">
+                            <?php echo number_format($item['item_score'], 1); ?> ★
                         </div>
                     </div>
-                    <div class="rank-score">
-                        <?php echo number_format($item['item_score'], 1); ?> ★
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p style="text-align:center;color:#999;padding:20px 0;">目前暫無餐點排行資料</p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="section-title"><span style="color:#D32F2F">👎</span> 需要改進的餐點</div>
+        <?php if (!empty($warning_items_list)): ?>
+            <?php foreach ($warning_items_list as $warn): ?>
+                <div class="warning-item">
+                    <div class="warning-header">
+                        <h5><?php echo htmlspecialchars($warn['item_name']); ?></h5>
+                        <div class="warning-score">★ <?php echo $warn['avg_score']; ?></div>
                     </div>
+                    <div class="warning-issue">常見意見：<?php echo htmlspecialchars($warn['issue']); ?></div>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <p style="text-align:center;color:#999;padding:20px 0;">目前暫無餐點排行資料</p>
+            <p style="text-align:center;color:#999;padding:10px 0;">本店餐點表現良好，暫無需要改進的餐點！</p>
         <?php endif; ?>
     </div>
-</div>
 
-<div class="dashboard-section">
-    <div class="section-title"><span style="color:#D32F2F">👎</span> 需要改進的餐點</div>
-    <?php if (!empty($warning_items_list)): ?>
-        <?php foreach ($warning_items_list as $warn): ?>
-            <div class="warning-item">
-                <div class="warning-header">
-                    <h5><?php echo htmlspecialchars($warn['item_name']); ?></h5>
-                    <div class="warning-score">★ <?php echo $warn['avg_score']; ?></div>
-                </div>
-                <div class="warning-issue">常見意見：<?php echo htmlspecialchars($warn['issue']); ?></div>
-            </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <p style="text-align:center;color:#999;padding:10px 0;">本店餐點表現良好，暫無需要改進的餐點！</p>
-    <?php endif; ?>
-</div>
-
-<div class="dashboard-section">
-    <div class="section-title"><span>💬</span> 最新評論</div>
-    <div id="js-review-container">
-        <style>
-            #js-review-container .review-item { display: none; }
-            #js-review-container .review-item:nth-child(1),
-            #js-review-container .review-item:nth-child(2),
-            #js-review-container .review-item:nth-child(3) { display: block; }
-        </style>
-        <?php if (isset($reviews_result) && $reviews_result->num_rows > 0): ?>
-            <?php while($rev = $reviews_result->fetch_assoc()): ?>
-                <div class="review-item">
-                    <div class="review-top">
-                        <div>
-                            <strong style="font-size:14px;"><?php echo htmlspecialchars($rev['reviewer_name'] ?? '匿名'); ?></strong>
-                            <div style="font-size:11px; color:#999;"><?php echo date('Y-m-d', strtotime($rev['created_at'])); ?></div>
+    <div class="dashboard-section">
+        <div class="section-title"><span>💬</span> 最新評論</div>
+        <div id="js-review-container">
+            <style>
+                #js-review-container .review-item { display: none; }
+                #js-review-container .review-item:nth-child(1),
+                #js-review-container .review-item:nth-child(2),
+                #js-review-container .review-item:nth-child(3) { display: block; }
+            </style>
+            <?php if (isset($reviews_result) && $reviews_result->num_rows > 0): ?>
+                <?php while($rev = $reviews_result->fetch_assoc()): ?>
+                    <div class="review-item">
+                        <div class="review-top">
+                            <div>
+                                <strong style="font-size:14px;"><?php echo htmlspecialchars($rev['reviewer_name'] ?? '匿名'); ?></strong>
+                                <div style="font-size:11px; color:#999;"><?php echo date('Y-m-d', strtotime($rev['created_at'])); ?></div>
+                            </div>
+                            <div class="review-stars"><?php echo str_repeat('★', $rev['rating']); ?></div>
                         </div>
-                        <div class="review-stars"><?php echo str_repeat('★', $rev['rating']); ?></div>
+                        <div style="font-size:12px; color:#002B5B; font-weight:bold; margin-bottom:5px;"><?php echo htmlspecialchars($rev['food_name']); ?></div>
+                        <p class="review-text"><?php echo htmlspecialchars($rev['content']); ?></p>
                     </div>
-                    <div style="font-size:12px; color:#002B5B; font-weight:bold; margin-bottom:5px;"><?php echo htmlspecialchars($rev['food_name']); ?></div>
-                    <p class="review-text"><?php echo htmlspecialchars($rev['content']); ?></p>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">
-                <?php echo isset($error_msg) ? $error_msg : '目前尚無評價資料'; ?>
-            </p>
-        <?php endif; ?>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <p style="text-align:center; color:#999; font-size:13px; padding:20px 0;">
+                    <?php echo isset($error_msg) ? $error_msg : '目前尚無評價資料'; ?>
+                </p>
+            <?php endif; ?>
+        </div>
     </div>
-</div>
 
-<div class="logout-section">
-    <a href="logout.php" class="logout-btn">登出</a>
+    <div class="logout-section">
+        <a href="logout.php" class="logout-btn">登出</a>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -311,16 +322,17 @@ try {
     const chartLabels = <?php echo json_encode($chart_labels); ?>;
     const chartData = <?php echo json_encode($chart_data); ?>;
     const ctx = document.getElementById('satisfactionChart').getContext('2d');
+    
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: chartLabels,
             datasets: [{
                 data: chartData,
-                borderColor: '#4CAF50',
-                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                borderColor: '#FF8C42',
+                backgroundColor: 'rgba(255, 140, 66, 0.1)',
                 borderWidth: 2,
-                pointBackgroundColor: '#4CAF50',
+                pointBackgroundColor: '#FF8C42',
                 fill: true,
                 tension: 0.3
             }]
