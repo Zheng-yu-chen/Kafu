@@ -9,7 +9,7 @@ if (isset($_SESSION['role_id']) && ($_SESSION['role_id'] == 1 || $_SESSION['role
 }
 
 $tray_items = [];
-// 💡 新增：各種總和變數
+// 💡 各種總和變數
 $total_calories = 0; 
 $total_protein = 0;  
 $total_price = 0;
@@ -92,26 +92,20 @@ $item_count = count($tray_items);
     .btn-remove { background: #f8f8f8; border: none; width: 28px; height: 28px; border-radius: 50%; color: #ccc; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
     .qty-tag { background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 5px; }
 
-    /* 💡 全新設計的結算總計區域 */
+    /* 全新設計的結算總計區域 */
     .tray-summary { background: #fdfdfd; padding: 20px 18px; border-top: 2px dashed #eee; display: flex; flex-direction: column; gap: 12px;}
-    
-    /* 總計標題 */
     .summary-label { font-weight: bold; color: #444; font-size: 15px; border-bottom: 1px solid #eaeaea; padding-bottom: 8px;}
-    
-    /* 第一排：價格與熱量 */
     .summary-main-row { display: flex; justify-content: space-between; align-items: baseline; }
-    .total-price { font-size: 20px; font-weight: bold; color: #E53935; } /* 價格設為紅色 */
-    .total-cal { color: var(--primary-orange, #FF8C42); font-size: 32px; font-weight: 900; line-height: 1; } /* 熱量最大 */
+    .total-price { font-size: 20px; font-weight: bold; color: #E53935; } 
+    .total-cal { color: var(--primary-orange, #FF8C42); font-size: 32px; font-weight: 900; line-height: 1; } 
     .total-cal small { font-size: 14px; font-weight: normal; margin-left: 3px; }
-    
-    /* 第二排：三大營養素 */
     .summary-macro-row { display: flex; justify-content: space-between; background: #f5f5f5; padding: 10px 15px; border-radius: 10px; }
     .macro-item { text-align: center; }
     .macro-label { display: block; font-size: 11px; color: #888; margin-bottom: 2px; }
     .macro-val { font-size: 14px; font-weight: bold; color: #333; }
 
     .action-section { padding: 0 20px 100px; } 
-    .btn-settle { background: #4CAF50; color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(76,175,80,0.3); }
+    .btn-settle { background: #4CAF50; color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(76,175,80,0.3); transition: transform 0.1s; }
     .btn-settle:active { transform: scale(0.98); }
 </style>
 
@@ -141,7 +135,7 @@ $item_count = count($tray_items);
                         <div class="cal-val"><?php echo $row['display_cal']; ?> kcal</div>
                         <div class="pro-val">
                             蛋白質 <?php echo number_format($row['display_pro'], 1); ?>g / 
-                            脂防 <?php echo number_format($row['display_fat'], 1); ?>g / 
+                            脂肪 <?php echo number_format($row['display_fat'], 1); ?>g / 
                             碳水 <?php echo number_format($row['display_carbs'], 1); ?>g
                         </div>
                     </div>
@@ -150,15 +144,12 @@ $item_count = count($tray_items);
             </div>
         <?php endforeach; ?>
 
-        <!-- 💡 重新排版的總計區域 -->
         <div class="tray-summary">
             <div class="summary-label">預計攝取與花費總計</div>
-            
             <div class="summary-main-row">
                 <div class="total-price">$<?php echo floatval($total_price); ?></div>
                 <div class="total-cal">🔥 <?php echo $total_calories; ?><small>kcal</small></div>
             </div>
-            
             <div class="summary-macro-row">
                 <div class="macro-item macro-pro">
                     <span class="macro-label">蛋白質</span>
@@ -174,7 +165,6 @@ $item_count = count($tray_items);
                 </div>
             </div>
         </div>
-
     <?php else: ?>
         <div style="padding: 40px; text-align: center; color: #ccc;">托盤是空的，快去加入美食吧！</div>
     <?php endif; ?>
@@ -183,7 +173,7 @@ $item_count = count($tray_items);
 <div class="action-section">
     <?php if ($item_count > 0): ?>
         <?php if (isset($_SESSION['u_id'])): ?>
-            <form action="settle_tray.php" method="POST">
+            <form action="settle_confirm_modal.php" method="POST">
                 <button type="submit" class="btn-settle">結算寫入歷史紀錄</button>
             </form>
         <?php endif; ?>
@@ -196,4 +186,8 @@ function deleteItem(index) { window.location.href = 'delete_item.php?id=' + inde
 function clearTray() { if(confirm('確定要清空嗎？')) window.location.href = 'clear_tray.php'; }
 </script>
 
-<?php include('footer.php'); ?>
+<?php 
+// 🎯 關鍵修改 2：把原本底部的 include('settle_confirm_modal.php') 徹底拿掉！
+// 這樣在一點進托盤頁時，系統才不會提前「偷跑」執行資料庫寫入程式碼而造成 Fatal Error 崩潰。
+include('footer.php'); 
+?>
