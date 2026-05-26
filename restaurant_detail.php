@@ -259,7 +259,7 @@ $result = $conn->query($sql);
     <?php else: ?>
         <div style="text-align: center; padding: 50px; color: #999;">
             <div style="font-size: 30px; margin-bottom: 10px;">🥗</div>
-            目前這間餐廳還沒有上架餐點喔！
+            Currently, this restaurant has no menu items listed.
         </div>
     <?php endif; ?>
 </div>
@@ -273,7 +273,7 @@ $result = $conn->query($sql);
             </div>
             <button class="close-btn" onclick="closeTrayModal()">×</button>
         </div>
-        <form action="add_to_tray.php" method="POST">
+        <form id="trayForm" onsubmit="return submitTrayFormAsync(event, this);">
             <input type="hidden" name="item_id" id="modalItemId" value="">
             <div class="modal-body">
                 <?php if (isset($_SESSION['u_id'])): ?>
@@ -430,6 +430,37 @@ $result = $conn->query($sql);
         setTimeout(() => { toast.remove(); }, 2000);
     }
 
+    // ==========================================================================
+    // 🎯 核心修正：非同步送出原本的表單，處理完後關閉它並彈出新開的獨立確認 Modal
+    // ==========================================================================
+    function submitTrayFormAsync(event, formElement) {
+        event.preventDefault(); // 🛑 核心：強行阻止網頁跳轉跳出白底黑字的 success 畫面！
+        
+        const formData = new FormData(formElement);
+        
+        // 讓 Fetch API 在背景偷偷把資料傳送給 add_to_tray.php
+        fetch('add_to_tray.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => {
+            // 比對後端回傳字串（去掉空格）
+            if (data.trim() === 'success') {
+                closeTrayModal();          // A. 先關閉原本選日期數量的舊視窗
+                showTrayConfirmModal();    // B. 🌟 順暢喚醒獨立新檔案裡你那張超精美的紅灰圓角對話框！
+            } else {
+                alert('加入托盤失敗，請重新選取餐點！');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('網路連線發生錯誤，請稍後再試！');
+        });
+        
+        return false;
+    }
+
     // Modal 開關邏輯
     function openTrayModal(itemId, itemName) {
         document.getElementById('modalItemId').value = itemId;
@@ -541,4 +572,5 @@ $result = $conn->query($sql);
     }
 </script>
 
+<?php include('tray_confirm_modal.php'); ?>
 <?php include('footer.php'); ?>
