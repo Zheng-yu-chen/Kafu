@@ -47,6 +47,7 @@ $comments_result = $stmt_comments->get_result();
 
 // 檢查身分與權限變數
 $is_current_shop_owner = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 2 && isset($_SESSION['r_id']) && $_SESSION['r_id'] == $r_id;
+$is_any_shop_owner = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 2;
 $is_admin = isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1;
 $current_user_id = $_SESSION['u_id'] ?? null;
 
@@ -290,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
             </div>
         </div>
         
-        <?php if ($current_user_id !== null && !$is_current_shop_owner && !$is_admin): ?>
+        <?php if ($current_user_id !== null && !$is_current_shop_owner && !$is_admin&& !$is_any_shop_owner): ?>
             <a href="add_comment.php?r_id=<?php echo $r_id; ?>" 
             style="text-decoration: none; background: #002B5B; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,43,91,0.15);">
             

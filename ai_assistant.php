@@ -32,27 +32,29 @@ include('header.php');
             gap: 12px;
         }
 
-        /* 底部對話輸入欄區塊 */
-        .chat-input-bar {
-            padding: 12px 15px 32px 15px; /* 🌟 關鍵：底部增加 32px 的 Padding，把輸入框安全地往上推 */
-            background: white;
-            border-top: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            position: sticky;
-            bottom: 58px; /* 🌟 讓它的白色背景完美貼齊底部導覽列 */
-            z-index: 1000;
-        }
+       /* 底部對話輸入欄區塊 */
+.chat-input-bar {
+    padding: 12px 15px 32px 15px; /* 底部增加 32px 的 Padding */
+    background: white;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    position: sticky;
+    bottom: 58px; /* 讓它的白色背景完美貼齊底部導覽列 */
+    z-index: 1000;
+    box-sizing: border-box; /* 💡 確保 padding 不會撐開總寬度 */
+    width: 100%;            /* 💡 預設直接填滿父容器 */
+}
 
-        @media (max-width: 420px) {
-            .chat-input-bar {
-                width: calc(100vw - 16px);
-                left: 50%;
-                transform: translateX(-50%);
-                bottom: 90px;
-            }
-        }
+/* 手機版 RWD 微調 */
+@media (max-width: 420px) {
+    .chat-input-bar {
+        /* 💡 拔除原本會導致畫面歪斜的 left、transform 與 100vw 計算 */
+        bottom: 90px; /* 依據你的設計，手機版往上推調整高度 */
+        padding: 12px 12px 24px 12px; /* 稍微縮小手機版的內距，讓輸入框更有空間 */
+    }
+}
 
         .chat-styled-input {
             flex: 1;
