@@ -167,15 +167,25 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     .item-price { font-weight: bold; color: #E53935; }
     .item-calories { font-weight: bold; color: var(--primary-orange, #FF8C42); }
     .item-actions { display: flex; gap: 10px; margin-top: 12px; }
-    .btn-edit, .btn-delete { background: white; border: 1px solid #ddd; font-size: 12px; cursor: pointer; padding: 8px 12px; border-radius: 10px; font-weight: bold; transition: 0.2s; }
-    .btn-edit { color: #6aafe7; border-color: #bbdefb; }
-    .btn-edit:hover { background: #e3f2fd; }
-    .btn-delete { color: #f44336; border-color: #ffcdd2; }
-    .btn-delete:hover { background: #ffebee; }
-    @media (max-width: 720px) {
-        .history-container { padding: 16px; }
-        .calendar-grid { gap: 5px; }
-        .calendar-day { min-height: 34px; padding: 2px 2px; }
+   
+
+    .btn-edit { 
+        background-color: #2196F3 !important; 
+        color: white !important; 
+        border: none ; 
+    }
+    .btn-edit:hover { background-color: #1E88E5 ; }
+
+    .btn-delete { 
+        background-color: #F44336 !important; 
+        color: white !important; 
+        border: none ; 
+    }
+    .btn-delete:hover { background-color: #E53935;}
+        @media (max-width: 720px) {
+            .history-container { padding: 16px; }
+            .calendar-grid { gap: 5px; }
+            .calendar-day { min-height: 34px; padding: 2px 2px; }
     }
     
     .history-container { padding: 20px; max-width: 500px; margin: auto; }
