@@ -19,10 +19,22 @@ if ($user_res && $row = $user_res->fetch_assoc()) {
 
 // 確保抓取 items 表中的 price, fat, carbs 以計算總和與單項顯示
 $sql = "SELECT l.*, i.name as item_name, 
-        CASE WHEN l.price > 0 THEN l.price ELSE COALESCE(i.price, 0) END as final_price, 
-        COALESCE(NULLIF(l.total_protein, 0), i.protein) as final_protein, -- 👈 用 NULLIF 把 0 轉 NULL，回退到 items.protein
-        COALESCE(NULLIF(l.total_fat, 0), i.fat) as final_fat,   -- 👈 用 NULLIF 把 0 轉 NULL，回退到 items.fat
-        COALESCE(NULLIF(l.total_carbs, 0), i.carbs) as final_carbs -- 👈 用 NULLIF 把 0 轉 NULL，回退到 items.carbs
+        CASE 
+            WHEN l.item_id IS NULL THEN l.price
+            ELSE (CASE WHEN l.price > 0 THEN l.price ELSE i.price END)
+        END as final_price,
+        CASE 
+            WHEN l.item_id IS NULL THEN l.total_protein
+            ELSE COALESCE(NULLIF(l.total_protein, 0), i.protein)
+        END as final_protein,
+        CASE 
+            WHEN l.item_id IS NULL THEN l.total_fat
+            ELSE COALESCE(NULLIF(l.total_fat, 0), i.fat)
+        END as final_fat,
+        CASE 
+            WHEN l.item_id IS NULL THEN l.total_carbs
+            ELSE COALESCE(NULLIF(l.total_carbs, 0), i.carbs)
+        END as final_carbs
         FROM consumptionlogs l 
         LEFT JOIN items i ON l.item_id = i.item_id 
         WHERE l.u_id = ? 
@@ -79,7 +91,41 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     .btn-manual { background: #FF8C42; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; }
     .history-container { padding: 20px; max-width: 900px; margin: auto; }
     .calendar-card { background: white; border-radius: 22px; padding: 8px; box-shadow: 0 3px 20px rgba(0,0,0,0.08); margin-bottom: 10px; }
-    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    /* 讓標頭置中對齊 */
+.calendar-header { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 14px; 
+}
+
+.calendar-select {
+    font-size: 20px;
+    font-weight: 700;
+    color: #002B5B;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    padding: 2px 16px 2px 6px; /* 右邊留點空間放箭頭 */
+    text-align: center;
+    
+    /* 核心：隱藏瀏覽器預設的醜箭頭 */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    /* 使用內建的自訂向下箭頭 (▾) 作為背景圖，顏色採用與主題一致的深藍色 */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='%23002B5B'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 2px center; /* 讓箭頭靠右置中 */
+    background-size: 12px;
+}/* 滑鼠移上去時有微幅底色提示可以點擊 */
+.calendar-select:hover {
+    background: #eef2f7;
+    border-radius: 8px;
+}
     .calendar-title { font-size: 20px; font-weight: 700; color: #002B5B; }
     .calendar-nav button { background: #002B5B; color: white; border: none; border-radius: 12px; font-size: 14px; padding: 8px 14px; cursor: pointer; margin-left: 8px; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
@@ -195,24 +241,23 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
 </div>
 
 <div class="history-container">
-    <div class="calendar-card">
-        <div class="calendar-header">
-            <div class="calendar-title" id="calendarTitle"></div>
-            <div class="calendar-nav">
-                <button type="button" onclick="changeCalendarMonth(-1)">上一月</button>
-                <button type="button" onclick="changeCalendarMonth(1)">下一月</button>
-            </div>
-        </div>
-        <div class="calendar-grid" id="calendarGrid">
-            <div class="calendar-weekday">日</div>
-            <div class="calendar-weekday">一</div>
-            <div class="calendar-weekday">二</div>
-            <div class="calendar-weekday">三</div>
-            <div class="calendar-weekday">四</div>
-            <div class="calendar-weekday">五</div>
-            <div class="calendar-weekday">六</div>
+   <div class="calendar-card">
+    <div class="calendar-header">
+        <div class="calendar-title">
+            <select id="selectYear" class="calendar-select"></select> 年
+            <select id="selectMonth" class="calendar-select"></select> 月
         </div>
     </div>
+    <div class="calendar-grid" id="calendarGrid">
+        <div class="calendar-weekday">日</div>
+        <div class="calendar-weekday">一</div>
+        <div class="calendar-weekday">二</div>
+        <div class="calendar-weekday">三</div>
+        <div class="calendar-weekday">四</div>
+        <div class="calendar-weekday">五</div>
+        <div class="calendar-weekday">六</div>
+    </div>
+</div>
 
     <div class="history-card" id="selectedDayCard">
         <div class="history-summary-row">
@@ -262,11 +307,11 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
                 
                 <!-- 💡 2x2 網格：加入脂肪和碳水輸入框 -->
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="form-group">
-                    <div><label>熱量 (kcal)</label><input type="number" name="calories" class="form-input" required></div>
-                    <div><label>蛋白質 (g)</label><input type="number" step="0.1" name="protein" class="form-input" required></div>
-                    <div><label>脂肪 (g)</label><input type="number" step="0.1" name="fat" class="form-input" value="0"></div>
-                    <div><label>碳水 (g)</label><input type="number" step="0.1" name="carbs" class="form-input" value="0"></div>
-                    <div style="grid-column: span 2;"><label>價錢 ($)</label><input type="number" name="price" id="edit_price" class="form-input" placeholder="請輸入金額"></div>
+                    <div><label>熱量 (kcal)</label><input type="number" name="calories" class="form-input" value="0"min="0"></div>
+                    <div><label>蛋白質 (g)</label><input type="number" step="0.1" name="protein" class="form-input" value="0.0" min="0"></div>
+                    <div><label>脂肪 (g)</label><input type="number" step="0.1" name="fat" class="form-input" value="0.0" min="0"></div>
+                    <div><label>碳水 (g)</label><input type="number" step="0.1" name="carbs" class="form-input" value="0.0" min="0"></div>
+                    <div style="grid-column: span 2;"><label>價錢 ($)</label><input type="number" name="price" id="edit_price" class="form-input" placeholder="請輸入金額" min="0"></div>
                 </div>
                 
                 <div class="form-group">
@@ -301,11 +346,11 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
                 
                 <!-- 💡 2x2 網格：加入脂肪和碳水輸入框 -->
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="form-group">
-                    <div><label>熱量 (kcal)</label><input type="number" name="calories" id="edit_calories" class="form-input" required></div>
-                    <div><label>蛋白質 (g)</label><input type="number" step="0.1" name="protein" id="edit_protein" class="form-input" required></div>
-                    <div><label>脂肪 (g)</label><input type="number" step="0.1" name="fat" id="edit_fat" class="form-input"></div>
-                    <div><label>碳水 (g)</label><input type="number" step="0.1" name="carbs" id="edit_carbs" class="form-input"></div>
-                    <div style="grid-column: span 2;"><label>價錢 ($)</label><input type="number" name="price" id="edit_price" class="form-input" placeholder="請輸入金額"></div>
+                    <div><label>熱量 (kcal)</label><input type="number" name="calories" id="edit_calories" class="form-input"min="0" ></div>
+                    <div><label>蛋白質 (g)</label><input type="number" step="0.1" name="protein" id="edit_protein" class="form-input"min="0" ></div>
+                    <div><label>脂肪 (g)</label><input type="number" step="0.1" name="fat" id="edit_fat" class="form-input"min="0"></div>
+                    <div><label>碳水 (g)</label><input type="number" step="0.1" name="carbs" id="edit_carbs" class="form-input"min="0"></div>
+                    <div style="grid-column: span 2;"><label>價錢 ($)</label><input type="number" name="price" id="edit_final_price" class="form-input" placeholder="請輸入金額"min="0"></div>
                 </div>
                 
                 <div class="form-group">
@@ -336,24 +381,22 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
     
     // 💡 接收脂肪和碳水參數，並填入輸入框
-    function openEditModal(logId, name, date, meal, cal, pro, fat, carbs, price) {
-        document.getElementById('edit_log_id').value = logId;
-        document.getElementById('edit_food_name').value = name;
+ // 🌟 修正後的編輯彈窗給值邏輯：確保變數順序與傳入參數完全一致
+function openEditModal(logId, name, date, meal, cal, pro, fat, carbs, price) {
+    document.getElementById('edit_log_id').value = logId;
+        document.getElementById('edit_food_name').value = name || '';
         document.getElementById('edit_eat_date').value = date;
-        document.getElementById('edit_calories').value = cal;
-        document.getElementById('edit_protein').value = pro;
-        document.getElementById('edit_fat').value = fat;
-        document.getElementById('edit_carbs').value = carbs;
-
-        if (document.getElementById('edit_price')) {
-            document.getElementById('edit_price').value = price;
-        }
+        
+        document.getElementById('edit_calories').value = (cal !== null && cal !== undefined) ? cal : 0;
+        document.getElementById('edit_protein').value = (pro !== null && pro !== undefined) ? parseFloat(Math.max(0, pro)).toFixed(1) : '0.0';
+document.getElementById('edit_fat').value = (fat !== null && fat !== undefined) ? parseFloat(Math.max(0, fat)).toFixed(1) : '0.0';
+document.getElementById('edit_carbs').value = (carbs !== null && carbs !== undefined) ? parseFloat(Math.max(0, carbs)).toFixed(1) : '0.0';
+        document.getElementById('edit_final_price').value = (price !== null && price !== undefined && parseFloat(price) > 0) ? Math.round(parseFloat(price)) : '';
         if (document.getElementById('edit_meal_' + meal)) {
             document.getElementById('edit_meal_' + meal).checked = true;
         }
-
-        document.getElementById('editModal').style.display = 'flex';
-    }
+    document.getElementById('editModal').style.display = 'flex';
+}
     function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
     const logSummaries = <?php echo json_encode($date_summaries); ?>;
@@ -372,20 +415,19 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
         return value.toString().padStart(2, '0');
     }
 
-    function changeCalendarMonth(offset) {
-        currentMonth += offset;
-        if (currentMonth < 1) {
-            currentMonth = 12;
-            currentYear -= 1;
-        } else if (currentMonth > 12) {
-            currentMonth = 1;
-            currentYear += 1;
-        }
+    // 1. 原本的 changeCalendarMonth 函數可以整段刪除，換成底下的監聽處理函數：
+    function handleSelectChange() {
+        currentYear = parseInt(document.getElementById('selectYear').value, 10);
+        currentMonth = parseInt(document.getElementById('selectMonth').value, 10);
+        
         renderCalendar(currentYear, currentMonth);
+        
+        // 保留你原本切換月份時自動抓取該月第一天紀錄的邏輯
         const monthDates = Object.keys(logSummaries).filter(d => {
             const [y, m] = d.split('-').map(Number);
             return y === currentYear && m === currentMonth;
         }).sort();
+        
         if (monthDates.length > 0) {
             selectDay(monthDates[0]);
         } else {
@@ -394,11 +436,40 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
         }
     }
 
-    function renderCalendar(year, month) {
-        const calendarTitle = document.getElementById('calendarTitle');
-        const calendarGrid = document.getElementById('calendarGrid');
-        calendarTitle.textContent = `${year} 年 ${month} 月`;
+    // 新增：初始化年份與月份的選項（此處年份預設生成 2020 到 2035 年）
+    function initCalendarSelects() {
+        const selectYear = document.getElementById('selectYear');
+        const selectMonth = document.getElementById('selectMonth');
 
+        // 生成年份
+        selectYear.innerHTML = '';
+        for (let y = 2020; y <= 2035; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            selectYear.appendChild(opt);
+        }
+
+        // 生成月份
+        selectMonth.innerHTML = '';
+        for (let m = 1; m <= 12; m++) {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            selectMonth.appendChild(opt);
+        }
+
+        // 綁定變更事件
+        selectYear.addEventListener('change', handleSelectChange);
+        selectMonth.addEventListener('change', handleSelectChange);
+    }
+
+    function renderCalendar(year, month) {
+        // 2. 將原先的 calendarTitle.textContent = ... 改為同步選單的值：
+        document.getElementById('selectYear').value = year;
+        document.getElementById('selectMonth').value = month;
+
+        const calendarGrid = document.getElementById('calendarGrid');
         const firstDay = new Date(year, month - 1, 1);
         const firstWeekday = firstDay.getDay();
         const daysInMonth = new Date(year, month, 0).getDate();
@@ -427,14 +498,9 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
                 calendarGrid.appendChild(dayEl);
                 return;
             }
-            // 設定 data 屬性以方便之後比對
             dayEl.dataset.dateKey = cell.dateKey;
-            if (cell.hasEntry) {
-                dayEl.classList.add('has-entry');
-            }
-            if (cell.dateKey === selectedDate) {
-                dayEl.classList.add('selected');
-            }
+            if (cell.hasEntry) { dayEl.classList.add('has-entry'); }
+            if (cell.dateKey === selectedDate) { dayEl.classList.add('selected'); }
 
             const numberEl = document.createElement('div');
             numberEl.className = 'day-number';
@@ -447,10 +513,8 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
                 dayEl.appendChild(dotEl);
             }
 
-            // 允許點擊選取所有非空日期 (不再僅限有紀錄的日期)
             dayEl.style.cursor = 'pointer';
             dayEl.addEventListener('click', () => selectDay(cell.dateKey));
-
             calendarGrid.appendChild(dayEl);
         });
     }
@@ -556,19 +620,20 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
             editBtn.className = 'btn-edit';
             editBtn.type = 'button';
             editBtn.textContent = '編輯';
-            editBtn.addEventListener('click', () => {
-                openEditModal(
-                    log.log_id,
-                    itemName,
-                    dateKey,
-                    log.daily_meal,
-                    log.total_calories,
-                    log.total_protein,
-                    log.fat || 0,
-                    log.carbs || 0,
-                    log.final_price || 0
-                );
-            });
+           // 尋找你程式碼中的 editBtn 點擊事件，將其內容完整替換成這樣：
+editBtn.addEventListener('click', () => {
+    openEditModal(
+        log.log_id,
+        itemName,
+        dateKey,
+        log.daily_meal,
+        log.total_calories,
+        log.final_protein, // 🌟 修正：把 total_protein 改成 final_protein
+        log.final_fat,     // 確保使用 final_ 變數
+        log.final_carbs,   // 確保使用 final_ 變數
+        log.final_price
+    );
+});
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete';
             deleteBtn.type = 'button';
@@ -590,6 +655,7 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        initCalendarSelects(); // 👈 先初始化下拉選單選項
         renderCalendar(currentYear, currentMonth);
         updateSelectedDay(selectedDate);
     });

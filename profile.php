@@ -406,7 +406,12 @@ if ($is_logged_in) {
 
 <div class="stats-card-combined">
     <?php if ($is_logged_in): ?>
-        <h2 style="font-size: 16px; color: #333; margin: 0 0 12px 0;">今日攝取進度</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 style="font-size: 16px; color: #333; margin: 0;">今日攝取進度</h2>
+            <a href="history.php?action=gotoday#selectedDayCard" style="font-size: 12px; color: #ffffff; background-color: #cccccc; padding: 5px 11px; border-radius: 12px; text-decoration: none; transition: background 0.2s; font-weight: bold;" onmouseover="this.style.backgroundColor='#b3b3b3'" onmouseout="this.style.backgroundColor='#cccccc'">
+                查看今日紀錄
+            </a>
+        </div>
         
         <div class="summary-main-row">
             <div class="total-price">$<?php echo floatval($display_price); ?></div>
