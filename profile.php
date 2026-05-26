@@ -128,7 +128,7 @@ if ($is_logged_in) {
     $announcement_query = "SELECT title, content, created_at FROM announcements ORDER BY created_at DESC LIMIT 5";
     $announcement_result = $conn->query($announcement_query);
 
-    // 🎯 修正核心 1：算總數，同時拿到最新一則公告的 ID 作為已讀標記
+    // 🎯 修正核心 1 : 算總數，同時拿到最新一則公告的 ID 作為已讀標記
     $count_query = "SELECT COUNT(id) AS total, MAX(id) AS latest_id FROM announcements";
     $count_result = $conn->query($count_query);
     $count_row = $count_result ? $count_result->fetch_assoc() : null;
@@ -149,7 +149,7 @@ if ($is_logged_in) {
         position: relative;
         display: inline-block;
         margin-left: auto; /* 👈 關鍵核心：自動向左塞滿空間，把鈴鐺推到最右邊 */
-        margin-right: 10px; /* 👈 加分微調：讓鈴鐺跟最右邊邊緣保持一點點呼吸空間 */
+        /* 🎯 移除原本寫死的 margin-right，改由下方 HTML 內的內聯樣式動態控制 */
     }
 
     /* 鈴鐺按鈕本體 */
@@ -365,7 +365,7 @@ if ($is_logged_in) {
         <p><?php echo $is_logged_in ? "帳號：" . htmlspecialchars($user_account) : "登入後開啟健康追蹤功能"; ?></p>
     </div>
     
-    <div class="notification-dropdown">
+    <div class="notification-dropdown" style="margin-right: <?php echo $is_logged_in ? '10px' : '100px'; ?>;">
         <button class="notification-trigger" id="notiBtn" type="button" data-latest-id="<?php echo $latest_announcement_id; ?>">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
             <i class="fa-solid fa-bell"></i>
