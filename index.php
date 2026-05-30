@@ -49,7 +49,7 @@ if ($is_advanced_search) {
     if ($low_cal) $sql .= " AND i.calories < 500 AND i.calories IS NOT NULL";
     if ($high_pro) $sql .= " AND i.protein > 20 AND i.protein IS NOT NULL";
     
-    // 💡 修正：在餐點模式下也綁定地區過濾（心園、理園、輔園）
+    // 在餐點模式下也綁定地區過濾
     if ($filter !== '全部') {
         $filter_safe = mysqli_real_escape_string($conn, $filter);
         $sql .= " AND r.location = '$filter_safe'";
@@ -62,10 +62,9 @@ if ($is_advanced_search) {
     
 } else {
     // 模式 B：預設模式，顯示整間「餐廳」
-    // 💡 修正：因為只是要列出餐廳，不需要 JOIN categories 和 items，也不需要用餐點價格排序
     $sql = "SELECT * FROM restaurants r WHERE 1=1";
 
-    // 💡 地區過濾（心園、理園、輔園）
+    // 地區過濾
     if ($filter !== '全部') {
         $filter_safe = mysqli_real_escape_string($conn, $filter);
         $sql .= " AND r.location = '$filter_safe'";
@@ -104,7 +103,45 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
 }
 ?>
 
+<!-- ========================= Intro.js 資源 ========================= -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
+
 <style>
+    /* ========================= Intro.js 樣式覆寫：全螢幕濾鏡感 ========================= */
+    /* 1. 全螢幕背景遮罩（毛玻璃模糊 + 深藍色微透濾鏡） */
+    .introjs-overlay {
+        background: rgba(0, 15, 35, 0.65) !important; /* 偏深的輔大藍濾鏡，增加沉浸感 */
+        backdrop-filter: blur(8px) !important; /* 毛玻璃模糊效果 */
+        -webkit-backdrop-filter: blur(8px) !important; /* 支援蘋果設備 */
+    }
+
+    /* 2. 高亮聚焦的框框（加上微微的橘色發光，讓重點跳脫出來） */
+    .introjs-helperLayer {
+        background: transparent !important;
+        border: 2px solid var(--primary-orange, #FF8C42) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 0 25px rgba(255, 140, 66, 0.5) !important;
+    }
+
+    /* 3. 導覽對話框本體美化 */
+    .introjs-tooltip { 
+        border-radius: 16px !important; 
+        background: rgba(255, 255, 255, 0.95) !important; /* 帶一點點透明度 */
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3) !important;
+        border: 1px solid rgba(255,255,255,0.5) !important;
+    }
+
+    /* 4. 按鈕樣式維持輔大藍 */
+    .introjs-button { 
+        background: var(--fujen-blue, #002B5B) !important; 
+        color: white !important; 
+        text-shadow: none !important; 
+        border-radius: 8px !important;
+        font-weight: bold !important;
+    }
+    
     /* 基礎樣式 */
     .top-banner { background-color: var(--fujen-blue, #002B5B); color: white; padding: 12px 20px 55px; text-align: center; }
     .header-container { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; margin-bottom: 10px; }
@@ -336,7 +373,8 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
 
             <?php if ($canRecommendRemaining && isset($_SESSION['u_id'])): ?>
             <div class="search-extra" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-                <div class="remaining-calorie">
+                <!-- ========================= Intro.js Step 3 ========================= -->
+                <div class="remaining-calorie" data-step="3" data-intro="系統會在此即時顯示您今日的熱量攝取狀況。">
                     今日剩餘熱量：<?php echo $remaining_cal; ?> kcal
                 </div>
                 <div id="random-dice-btn" onclick="fetchRandomDish()" 
@@ -390,14 +428,18 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     </div>
 </div>
 
+<!-- ========================= Intro.js Step 1 ========================= -->
 <div class="filter-container">
-    <?php foreach (['全部', '心園', '理園', '輔園'] as $nav): 
+    <?php foreach (['全部', '心園', '理園', '輔園'] as $index => $nav): 
         // 建立 URL 參數，讓點選學餐分類時，能同時保留原本搜尋的關鍵字、預算、高蛋白等設定
         $query_args = $_GET;
         $query_args['filter'] = $nav;
         $link_url = "index.php?" . http_build_query($query_args);
+        
+        // 確保導覽只標記在第一顆按鈕
+        $intro_attr = ($index === 0) ? ' data-step="1" data-intro="第一步：從這裡選擇您想用餐的學餐區域！"' : '';
     ?>
-        <a href="<?php echo htmlspecialchars($link_url); ?>" class="filter-btn <?php echo ($filter == $nav) ? 'active' : ''; ?>"><?php echo $nav; ?></a>
+        <a href="<?php echo htmlspecialchars($link_url); ?>" class="filter-btn <?php echo ($filter == $nav) ? 'active' : ''; ?>" <?php echo $intro_attr; ?>><?php echo $nav; ?></a>
     <?php endforeach; ?>
 </div>
 
@@ -431,6 +473,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                 </div>
             </div>
             
+            <?php $item_index = 0; ?>
             <?php while($row = $result->fetch_assoc()): ?>
                 <div class="res-card" style="display: flex; justify-content: space-between; align-items: center;">
                     <div class="item-card-info">
@@ -456,7 +499,11 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                         </div>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin-left: 10px;">
-                        <button type="button" class="btn-solid-orange" data-item-id="<?php echo $row['item_id']; ?>" data-item-name="<?php echo htmlspecialchars($row['item_name'], ENT_QUOTES); ?>" onclick="openTrayModal(this.dataset.itemId, this.dataset.itemName)">
+                        <!-- ========================= Intro.js Step 2 (餐點模式) ========================= -->
+                        <?php 
+                            $intro_attr_adv = ($item_index === 0) ? ' data-step="2" data-intro="點擊這裡，將喜歡的餐點加入托盤並計算熱量。"' : ''; 
+                        ?>
+                        <button type="button" class="btn-solid-orange" data-item-id="<?php echo $row['item_id']; ?>" data-item-name="<?php echo htmlspecialchars($row['item_name'], ENT_QUOTES); ?>" onclick="openTrayModal(this.dataset.itemId, this.dataset.itemName)" <?php echo $intro_attr_adv; ?>>
                             加入托盤+
                         </button>
                         
@@ -465,11 +512,17 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                         </a>
                     </div>
                 </div>
+                <?php $item_index++; ?>
             <?php endwhile; ?>
             
         <?php else: ?>
+            <?php $item_index = 0; ?>
             <?php while($row = $result->fetch_assoc()): ?>
-                <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="res-card">
+                <!-- ========================= Intro.js Step 2 (餐廳模式) ========================= -->
+                <?php 
+                    $intro_attr_res = ($item_index === 0) ? ' data-step="2" data-intro="第二步: 點擊進入餐廳，尋找您想吃的餐點並加入托盤！"' : ''; 
+                ?>
+                <a href="restaurant_detail.php?r_id=<?php echo $row['r_id']; ?>" class="res-card" <?php echo $intro_attr_res; ?>>
                     <div class="res-img">
                         <img src="images/<?php echo $row['image_url']; ?>" class="res-actual-img" alt="店家圖片">
                     </div>
@@ -481,6 +534,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
                     </div>
                     <div style="margin-left: auto; color: #ccc;">❯</div>
                 </a>
+                <?php $item_index++; ?>
             <?php endwhile; ?>
         <?php endif; ?>
         
@@ -679,6 +733,7 @@ function appendMessage(role, text, id = '') {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    // 1. 【保留】您原本的 AI 小助理與網址參數判斷邏輯
     const aiWrapper = document.getElementById('ai-wrapper');
     if (aiWrapper) document.body.appendChild(aiWrapper);
 
@@ -694,8 +749,130 @@ document.addEventListener("DOMContentLoaded", function() {
         const advPanel = document.getElementById('advPanel');
         if (advPanel) advPanel.classList.add('active');
     }
-});
 
+    // 2. 【更新】進階跨頁版 Intro.js 全螢幕濾鏡 + 下次不再顯示腳本
+    const canShowTour = <?php echo $canRecommendRemaining ? 'true' : 'false'; ?>;
+
+    if (canShowTour && !localStorage.getItem('kafu_onboarding_done')) {
+        setTimeout(() => {
+            const tour = introJs();
+
+            // 1. 定義基礎步驟 (所有人可見)
+            let steps = [
+                {
+                    element: document.querySelector('.filter-btn'), 
+                    intro: "第一步：從這裡選擇您想用餐的學餐區域！",
+                    position: 'bottom'
+                },
+                {
+                    element: document.querySelector('.res-card'),
+                    intro: "第二步：點擊進入餐廳，尋找您想吃的餐點並加入托盤！",
+                    position: 'bottom'
+                }
+            ];
+
+           // 關鍵修改：檢查元素是否真的存在於畫面上
+            // 如果沒登入導致這些元素隱藏或沒產生，這個函式會自動略過，不會報錯
+            const addIfExist = (selector, text) => {
+                const el = document.querySelector(selector);
+                if (el) {
+                    steps.push({ element: el, intro: text, position: 'bottom' });
+                }
+            };
+
+            // 檢查這三個功能按鈕是否存在
+            addIfExist('.remaining-calorie', "第三步：系統會在此即時顯示您今日的剩餘熱量攝取狀況。");
+            addIfExist('#random-dice-btn', "第四步：不知道吃什麼嗎？點擊這裡使用「隨機推薦」功能！");
+            addIfExist('#home-favorite-btn', "第五步：點擊這裡查看您收藏的美味餐點，隨時回味！");
+
+            // 設定導覽
+            tour.setOptions({
+                nextLabel: '下一步',
+                prevLabel: '上一步',
+                doneLabel: '下一步',
+                showStepNumbers: true,
+                showBullets: false,
+                scrollTo: 'element',
+                steps: steps
+            });
+              
+            // 當導覽氣泡渲染時，動態在左下角塞入「下次不再顯示」的勾選框
+            tour.onchange(function() {
+                setTimeout(() => {
+                    const tooltipButtons = document.querySelector('.introjs-tooltipbuttons');
+                    
+                    // 檢查是否已經存在，避免重複生成
+                    if (tooltipButtons && !document.getElementById('introjs-dont-show-wrapper')) {
+                        const wrapper = document.createElement('div');
+                        wrapper.id = 'introjs-dont-show-wrapper';
+                        wrapper.style.display = 'inline-flex';
+                        wrapper.style.alignItems = 'center';
+                        wrapper.style.marginRight = 'auto'; // 利用 flex 將按鈕推至右側
+                        wrapper.style.fontSize = '13px';
+                        wrapper.style.userSelect = 'none';
+
+                        // 插入 HTML，套用您的橘色主體色
+                        wrapper.innerHTML = `
+                            <input type="checkbox" id="introjs-dont-show" style="margin-right: 6px; accent-color: var(--primary-orange, #FF8C42); cursor: pointer; width: 15px; height: 15px;">
+                            <label for="introjs-dont-show" style="cursor: pointer; font-weight: normal; margin: 0; color: #555;">下次不再顯示</label>
+                        `;
+                        
+                        tooltipButtons.style.display = 'flex';
+                        tooltipButtons.style.alignItems = 'center';
+                        tooltipButtons.insertBefore(wrapper, tooltipButtons.firstChild);
+                    }
+                }, 50);
+            });
+
+            // 監聽點擊「下一步 (進入餐廳)」結束首頁導覽
+            tour.oncomplete(function() {
+                const checkBox = document.getElementById('introjs-dont-show');
+                if (checkBox && checkBox.checked) {
+                    localStorage.setItem('kafu_onboarding_done', 'true');
+                    localStorage.removeItem('kafu_tour_step');
+                } else {
+                    // 使用者沒勾選「下次不再顯示」，代表要繼續進行跨頁導覽，設定步驟 3 標記
+                    localStorage.setItem('kafu_tour_step', '3');
+                    
+                    // 自動幫使用者尋找第一個導覽目標的連結並跳轉
+                    const firstResCard = document.querySelector('[data-step="2"]');
+                    if (firstResCard) {
+                        if (firstResCard.tagName === 'A') {
+                            window.location.href = firstResCard.href;
+                        } else {
+                            // 如果是進階搜尋餐點模式，往上找卡片再尋找「前往餐廳 ❯」的按鈕連結
+                            const link = firstResCard.closest('.res-card')?.querySelector('a.btn-solid-blue');
+                            if (link) window.location.href = link.href;
+                        }
+                    }
+                }
+            });
+
+            // 監聽點選 ✕ 跳出導覽
+            tour.onexit(function() {
+                const checkBox = document.getElementById('introjs-dont-show');
+                if (checkBox && checkBox.checked) {
+                    localStorage.setItem('kafu_onboarding_done', 'true');
+                }
+                // 中途主動關閉則清除跨頁標記，不要跳轉
+                localStorage.removeItem('kafu_tour_step');
+            });
+
+            tour.start();
+
+            // 💡 額外優化：如果使用者在步驟 2 時沒有點導覽對話框的按鈕，而是直接用滑鼠手動點擊了畫面上的餐廳卡片，也要幫他帶入步驟 3 標記
+            const step2Element = document.querySelector('[data-step="2"]');
+            if (step2Element) {
+                step2Element.addEventListener('click', function() {
+                    const checkBox = document.getElementById('introjs-dont-show');
+                    if (!(checkBox && checkBox.checked)) {
+                        localStorage.setItem('kafu_tour_step', '3');
+                    }
+                });
+            }
+        }, 1000);
+    }
+});
 function toggleAssistant() {
     const card = document.getElementById('assistant-card');
     if (card) {

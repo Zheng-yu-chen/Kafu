@@ -2,6 +2,8 @@
 session_start();
 include('db.php');
 include('header.php');
+echo '<link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">';
+echo '<script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>';
 
 // 🚫 【已刪除】：把原本強制跳轉到 restaurant_management.php 的代碼全部刪除！
 
@@ -132,8 +134,24 @@ $result = $conn->query($sql);
     .dest-icon { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px; margin-bottom: 3px; opacity: 0.9; }
     
     /* 按鈕樣式 */
-    .add-btn { background: var(--fujen-blue, #002B5B); color: white; width: 34px; height: 34px; display: flex; justify-content: center; align-items: center; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,43,91,0.2); cursor: pointer; }
-    .add-btn:active { transform: scale(0.95); }
+    /* ✨ 將 .add-btn 修正為 .blue-plus-btn */
+.blue-plus-btn { 
+    background: var(--fujen-blue, #002B5B); 
+    color: white; 
+    width: 34px; 
+    height: 34px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    border-radius: 50%; 
+    border: none; 
+    font-size: 20px; 
+    font-weight: bold; 
+    flex-shrink: 0; 
+    box-shadow: 0 2px 5px rgba(0,43,91,0.2); 
+    cursor: pointer; 
+}
+.blue-plus-btn:active { transform: scale(0.95); }
 
     /* 💡 解開隱藏的編輯/刪除按鈕樣式 */
     .action-icons { display: flex; flex-direction: column; gap: 5px; }
@@ -175,6 +193,32 @@ $result = $conn->query($sql);
     .submit-tray-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #B35C22; }
 
     #toast-container { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 100000; pointer-events: none; }
+/* ========================= Intro.js 樣式覆寫：維持全螢幕濾鏡感 ========================= */
+    .introjs-overlay {
+        background: rgba(0, 15, 35, 0.65) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+    }
+    .introjs-helperLayer {
+        background: transparent !important;
+        border: 2px solid var(--primary-orange, #FF8C42) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 0 25px rgba(255, 140, 66, 0.5) !important;
+    }
+    .introjs-tooltip { 
+        border-radius: 16px !important; 
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3) !important;
+        border: 1px solid rgba(255,255,255,0.5) !important;
+    }
+    .introjs-button { 
+        background: var(--fujen-blue, #002B5B) !important; 
+        color: white !important; 
+        text-shadow: none !important; 
+        border-radius: 8px !important;
+        font-weight: bold !important;
+    }
 </style>
 
 <div class="header-section">
@@ -246,13 +290,15 @@ $result = $conn->query($sql);
                 </div>
                 
                 <?php if ($can_edit): ?>
-                    <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
-                        <button class="btn-edit" onclick="openEditModal(<?php echo $row['item_id']; ?>)">編輯</button>
-                        <button class="btn-delete" onclick="deleteItem(<?php echo $row['item_id']; ?>)">刪除</button>
-                    </div>
-                <?php elseif ($show_add_btn): ?>
-                    <button class="add-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>')" style="margin-left: 15px; flex-shrink: 0;">+</button>
-                <?php endif; ?>
+    <div class="action-icons" style="margin-left: 15px; flex-shrink: 0;">
+        <button class="btn-edit" onclick="openEditModal(<?php echo $row['item_id']; ?>)">編輯</button>
+        <button class="btn-delete" onclick="deleteItem(<?php echo $row['item_id']; ?>)">刪除</button>
+    </div>
+<?php elseif ($show_add_btn): ?>
+    <button type="button" class="blue-plus-btn" onclick="openTrayModal(<?php echo $row['item_id']; ?>, '<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>')">
+        +
+    </button>
+<?php endif; ?>
 
             </div>
         <?php endwhile; ?>
@@ -263,7 +309,6 @@ $result = $conn->query($sql);
         </div>
     <?php endif; ?>
 </div>
-
 <div id="trayModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
@@ -441,7 +486,8 @@ $result = $conn->query($sql);
         // 讓 Fetch API 在背景偷偷把資料傳送給 add_to_tray.php
         fetch('add_to_tray.php', {
             method: 'POST',
-            body: formData
+            body: formData,
+            cache: 'no-store'
         })
         .then(response => response.text())
         .then(data => {
@@ -570,6 +616,41 @@ $result = $conn->query($sql);
         .then(resp => { if (resp.success) { alert('新增成功！'); location.reload(); } else { alert('新增失敗'); } })
         .catch(err => { console.error(err); alert('網路錯誤'); });
     }
+ document.addEventListener("DOMContentLoaded", function() {
+    // 確保 introJs 已經載入
+    if (typeof introJs === 'function') {
+        const firstBlueBtn = document.querySelector('.blue-plus-btn');
+        
+        // 只有當按鈕存在時才啟動，避免報錯
+        if (firstBlueBtn) {
+            const tour = introJs();
+            
+            tour.setOptions({
+                nextLabel: '下一步',
+                prevLabel: '上一步',
+                doneLabel: '完成', // 👈 這裡修正為「完成」，確保不會顯示英文 Done
+                showStepNumbers: true,
+                showBullets: false,
+                scrollTo: 'element',
+                steps: [
+                    {
+                        element: firstBlueBtn,
+                        intro: "這是最後一步：點擊這個藍色「＋」按鈕，即可將餐點加入您的托盤！",
+                        position: 'left'
+                    }
+                ]
+            });
+
+            // 確保位置正確
+            tour.onchange(function() {
+                this.refresh();
+            });
+
+            // 啟動導覽
+            tour.start();
+        }
+    }
+  });
 </script>
 
 <?php include('tray_confirm_modal.php'); ?>

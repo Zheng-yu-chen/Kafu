@@ -27,46 +27,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
         
-        // 🌟 關鍵修正：將所有成功邏輯放在這裡面
-        if (password_verify($pwd, $user['password'])) {
-            
-            // 3. 檢查帳號是否被封鎖
+        // --- 核心驗證邏輯 ---
+        $is_password_correct = false;
+
+        // 1. 如果資料庫密碼開頭是 $2y$ 或 $2a$ (這是 password_hash 的特徵)
+        if (strpos($user['password'], '$2y$') === 0 || strpos($user['password'], '$2a$') === 0) {
+            if (password_verify($pwd, $user['password'])) {
+                $is_password_correct = true;
+            }
+        } 
+        // 2. 如果不是加密格式，則直接比對明文 (這是您目前的狀態)
+        else {
+            if ($pwd === $user['password']) {
+                $is_password_correct = true;
+                
+                // 登入成功後，自動升級加密
+                $new_hash = password_hash($pwd, PASSWORD_DEFAULT);
+                $update_stmt = $conn->prepare("UPDATE accounts SET password = ? WHERE u_id = ?");
+                $update_stmt->bind_param("si", $new_hash, $user['u_id']);
+                $update_stmt->execute();
+            }
+        }
+
+        // --- 登入結果判斷 ---
+        if ($is_password_correct) {
+            // 檢查封鎖
             if (isset($user['is_blocked']) && $user['is_blocked'] == 1) {
-                echo "<script>alert('您的帳號已被管理員停權！\\n無法登入，如有疑問請聯繫系統管理。'); window.location.href='login.php';</script>";
+                echo "<script>alert('您的帳號已被停權！'); window.location.href='login.php';</script>";
                 exit();
             }
             
-            // 登入成功，設定 Session
+            // 設定 Session
             $_SESSION['u_id'] = $user['u_id'];
             $_SESSION['name'] = $user['name'];
             $_SESSION['role_id'] = $user['role_id'];
             $_SESSION['r_id'] = $user['r_id'];
             $_SESSION['has_warning'] = $user['has_warning'];
-
-            // 設定 Cookie
-            if ($remember) {
-                setcookie('saved_account', $acc, time() + (30 * 24 * 60 * 60), "/", "", false, true);
-                setcookie('saved_password', base64_encode($pwd), time() + (30 * 24 * 60 * 60), "/", "", false, true);
-            } else {
-                setcookie('saved_account', '', time() - 3600, "/");
-                setcookie('saved_password', '', time() - 3600, "/");
-            }
-
-            // 根據角色跳轉
-            if ($user['role_id'] == 3) {
-                echo "<script>window.location.href = 'profile.php';</script>";
-            } else if ($user['role_id'] == 2) {
-                echo "<script>window.location.href = 'store_profile.php';</script>";
-            } else if ($user['role_id'] == 1) {
-                echo "<script>window.location.href = 'admin_dashboard.php';</script>";
-            }
+            
+            header("Location: index.php");
             exit();
-
         } else {
-            $error_msg = '帳號或密碼錯誤！';
+            $error_msg = "帳號或密碼錯誤。";
         }
     } else {
-        $error_msg = '帳號或密碼錯誤！';
+        $error_msg = "帳號不存在。";
     }
 }
 include('header.php');
