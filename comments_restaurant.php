@@ -340,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
                      data-has-image="<?php echo !empty($com['com_img']) ? 'true' : 'false'; ?>"
                      data-text="<?php echo htmlspecialchars(mb_strtolower($com['item_name'] . $com['content'])); ?>">
                     
-                    <div style="background:white; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; position: relative;">
+                    <div style="background:white; padding:15px 15px 15px 15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; position: relative; box-sizing: border-box; padding-right: 58px;">
                         <?php if ($is_admin): ?>
                             <button class="comment-delete-btn" onclick="deleteComment(<?php echo $com['com_id']; ?>, this)" title="刪除評論">🗑</button>
                         <?php endif; ?>
@@ -359,7 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
                                 <?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?>
                             </div>
 
-                          <?php if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id']): ?>
+                          <?php if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id'] && !$is_admin): ?>
                                 <button class="report-user-btn" onclick="reportComment(<?php echo $com['com_id']; ?>)" title="檢舉此評論">
                                     <i class="fa-solid fa-triangle-exclamation"></i> </button>
                           <?php endif; ?>

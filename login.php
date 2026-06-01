@@ -63,6 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['role_id'] = $user['role_id'];
             $_SESSION['r_id'] = $user['r_id'];
             $_SESSION['has_warning'] = $user['has_warning'];
+
+            // 記住我：成功登入後才儲存帳號與密碼 cookie
+            if ($remember) {
+                $expiry = time() + 60 * 60 * 24 * 30; // 30 天
+                setcookie('saved_account', $acc, $expiry, '/');
+                setcookie('saved_password', base64_encode($pwd), $expiry, '/');
+            } else {
+                setcookie('saved_account', '', time() - 3600, '/');
+                setcookie('saved_password', '', time() - 3600, '/');
+            }
             
             header("Location: index.php");
             exit();
