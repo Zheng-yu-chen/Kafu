@@ -665,6 +665,130 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
     box-shadow: 0 4px 0 #B35C22;
 }
 .submit-tray-btn:hover { background-color: #FF8336; }
+/* ==========================================================================
+   🎲 真實物理感 3D 骰子不規則翻滾、砸地彈跳與光影聯動
+   ========================================================================== */
+.real-dice-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 43, 91, 0.45); /* 輔大藍毛玻璃高質感底襯 */
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    z-index: 100000;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 拋擲舞台：拉高高度以釋放拋物線垂直砸落與反彈的立體空間 */
+.real-dice-stage {
+    position: relative;
+    width: 100px;
+    height: 200px; 
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* 將地面邊界固定在舞台底部 */
+    padding-bottom: 40px;
+    perspective: 800px; /* 3D 視距深度感 */
+}
+
+/* 3D 骰子方塊 */
+.real-dice-cube {
+    width: 90px;
+    height: 90px;
+    position: absolute;
+    bottom: 40px; /* 靠在邊界模擬觸地 */
+    transform-style: preserve-3d;
+    transform: rotateX(-20deg) rotateY(20deg);
+}
+
+/* 骰子 6 個面的立體拼接製作 */
+.real-dice-face {
+    position: absolute;
+    width: 90px; height: 90px;
+    background: #ffffff;
+    border: 3px solid #002B5B;
+    border-radius: 20px; /* 圓角骰子 */
+    font-size: 42px;
+    display: flex; align-items: center; justify-content: center;
+    /* 內陰影做出骰子面微微下陷的質感，外陰影做出半空中飛舞的立體感 */
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.06), 0 5px 15px rgba(0,0,0,0.12);
+    box-sizing: border-box;
+}
+
+/* 🎯 透過 3D 位移將六個平面摺紙組合為正立方體 */
+.real-dice-face.f-1 { transform: rotateY(  0deg) translateZ(45px); }
+.real-dice-face.f-2 { transform: rotateY(180deg) translateZ(45px); }
+.real-dice-face.f-3 { transform: rotateY( 90deg) translateZ(45px); }
+.real-dice-face.f-4 { transform: rotateY(-90deg) translateZ(45px); }
+.real-dice-face.f-5 { transform: rotateX( 90deg) translateZ(45px); }
+.real-dice-face.f-6 { transform: rotateX(-90deg) translateZ(45px); }
+
+/* 🌟 地面實時聯動陰影：隨著骰子的高度自動變大、變淡、邊緣模糊 */
+.real-dice-shadow {
+    position: absolute;
+    bottom: 15px;
+    width: 75px; height: 14px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 50%;
+    filter: blur(4px);
+    transform: scale(1);
+    z-index: -1;
+}
+
+/* 提示文字 */
+.real-dice-text {
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+    margin-top: 15px;
+}
+
+/* 🎬 核心動畫 1：真實拋擲物體在桌面上「下砸落地 ➔ 扁平形變 ➔ 再次反彈翻滾 ➔ 摩擦靜止」 */
+@keyframes realDiceThrowBounce {
+    0% {
+        /* 起始狀態：從高空中（-170px）伴隨傾斜拋落 */
+        transform: translateY(-170px) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    }
+    30% {
+        /* 第一次重力撞擊地面：方塊產生高度壓縮扁平（scaleY）、寬度擴張（scaleX）的物理動態回饋 */
+        transform: translateY(0px) scaleY(0.80) scaleX(1.18);
+    }
+    45% {
+        /* 第一次強力反彈回到空中：並隨反彈再次劇烈拉長並翻轉角度 */
+        transform: translateY(-70px) scaleY(1.08) scaleX(0.92);
+    }
+    60% {
+        /* 第二次落地砸擊：衝擊力減弱 */
+        transform: translateY(0px) scaleY(0.90) scaleX(1.08);
+    }
+    75% {
+        /* 第二次微弱反彈 */
+        transform: translateY(-22px) scaleY(1.02) scaleX(0.98);
+    }
+    90% {
+        /* 第三次著地：開始在地面做最後的摩擦微調 */
+        transform: translateY(0px) scaleY(0.96) scaleX(1.04);
+    }
+    100% {
+        /* 完全停穩、恢復正立方體比例定格開獎 */
+        transform: translateY(0px) scaleY(1) scaleX(1);
+    }
+}
+
+/* 🎬 核心動畫 2：地面的光影深度同步（骰子飛高時影子淡且擴散，觸地時影子驟然縮小深黑） */
+@keyframes realShadowSync {
+    0%   { transform: scale(1.7); opacity: 0.12; filter: blur(8px); }
+    30%  { transform: scale(0.85);opacity: 0.85; filter: blur(1.5px); }
+    45%  { transform: scale(1.35);opacity: 0.28; filter: blur(6px); }
+    60%  { transform: scale(0.93);opacity: 0.72; filter: blur(2.5px); }
+    75%  { transform: scale(1.12);opacity: 0.42; filter: blur(4.5px); }
+    90%  { transform: scale(1);   opacity: 0.68; filter: blur(3px); }
+    100% { transform: scale(1);   opacity: 0.6;  filter: blur(3px); }
+}
 </style>
 
 <script>
@@ -891,24 +1015,86 @@ function toggleAdvPanel() {
 }
 
 function fetchRandomDish() {
-    const btn = document.getElementById('random-dice-btn');
-    btn.style.transform = 'rotate(720deg)';
-    
+    // 1. 點擊後，立刻發送非同步請求到後端獲取隨機餐廳資料
     fetch('get_recommend.php?mode=random')
     .then(res => res.json())
     .then(data => {
         if(data.success && data.r_id) {
-            const resName = encodeURIComponent(data.restaurant || "好吃的店家");
-            window.location.href = `restaurant_detail.php?r_id=${data.r_id}&from=dice&name=${resName}`;
+            const resName = encodeURIComponent(data.restaurant || "好iches店家");
+            
+            // 2. 成功拿到資料後，立刻發動「真物理翻滾骰子」特效
+            // 傳入 Callback，等骰子落地、翻滾定格 1.6 秒後再跳轉頁面
+            rollRealistic3DDice(() => {
+                window.location.href = `restaurant_detail.php?r_id=${data.r_id}&from=dice&name=${resName}`;
+            });
         } else {
             alert('抽籤失敗，請稍後再試');
-            btn.style.transform = 'rotate(0deg)';
         }
     })
     .catch(err => {
         console.error(err);
-        btn.style.transform = 'rotate(0deg)';
+        alert('連線失敗，請檢查網路狀態');
     });
+}
+
+// 🎲 全新打造：真 3D 骰子隨機軸向翻滾 + 觸地物理形變 + 地面聯動陰影
+function rollRealistic3DDice(onComplete) {
+    let overlay = document.getElementById('realDiceOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'realDiceOverlay';
+        overlay.className = 'real-dice-overlay';
+        overlay.innerHTML = `
+            <div class="real-dice-stage">
+                <div class="real-dice-cube" id="realDiceCube">
+                    <div class="real-dice-face f-1">🎲</div>
+                    <div class="real-dice-face f-2">🍱</div>
+                    <div class="real-dice-face f-3">🍔</div>
+                    <div class="real-dice-face f-4">🍜</div>
+                    <div class="real-dice-face f-5">🍕</div>
+                    <div class="real-dice-face f-6">🥞</div>
+                </div>
+                <div class="real-dice-shadow" id="realDiceShadow"></div>
+            </div>
+            <div class="real-dice-text">正在翻滾命定美食...</div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    // 展現全螢幕模糊遮罩
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '1';
+    
+    const cube = document.getElementById('realDiceCube');
+    const shadow = document.getElementById('realDiceShadow');
+    
+    // 🎯 核心秘密：產生完全隨機的多軸向旋轉角度（X、Y、Z 軸不規則組合）
+    // 這會讓骰子每一次被拋出時，在空中翻面的軌跡與落地的定格面都完全不一樣！
+    const randX = (Math.floor(Math.random() * 5) + 5) * 360 + (Math.floor(Math.random() * 4) * 90);
+    const randY = (Math.floor(Math.random() * 5) + 5) * 360 + (Math.floor(Math.random() * 4) * 90);
+    const randZ = (Math.floor(Math.random() * 3) + 3) * 360;
+    
+    // 注入彈跳砸擊地面的物理 Keyframe，並套用多維隨機翻滾角度
+    cube.style.animation = 'realDiceThrowBounce 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards';
+    cube.style.transform = `rotateX(${randX}deg) rotateY(${randY}deg) rotateZ(${randZ}deg)`;
+    cube.style.transition = 'transform 1.6s cubic-bezier(0.1, 0.8, 0.25, 1)'; // 模擬由快到慢的自然摩擦阻力
+    
+    // 影子也會隨著骰子的重力跳動同步縮放、變深變淡
+    shadow.style.animation = 'realShadowSync 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards';
+    
+    // 1.8 秒後完成開獎定格，並淡出畫面執行網頁跳轉
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            // 重置動畫與狀態，方便下次點擊
+            cube.style.animation = 'none';
+            cube.style.transform = 'rotateX(-20deg) rotateY(20deg)';
+            shadow.style.animation = 'none';
+            onComplete();
+        }, 250);
+    }, 1800);
 }
 
 function handleSortToggle(targetField) {

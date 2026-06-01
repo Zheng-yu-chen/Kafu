@@ -219,6 +219,7 @@ $result = $conn->query($sql);
         border-radius: 8px !important;
         font-weight: bold !important;
     }
+    
 </style>
 
 <div class="header-section">
@@ -621,14 +622,14 @@ $result = $conn->query($sql);
     if (typeof introJs === 'function') {
         const firstBlueBtn = document.querySelector('.blue-plus-btn');
         
-        // 只有當按鈕存在時才啟動，避免報錯
-        if (firstBlueBtn) {
+        // 只有當按鈕存在，且使用者沒有勾選過「下次不再顯示」時才啟動
+        if (firstBlueBtn && !localStorage.getItem('kafu_onboarding_done')) {
             const tour = introJs();
             
             tour.setOptions({
                 nextLabel: '下一步',
                 prevLabel: '上一步',
-                doneLabel: '完成', // 👈 這裡修正為「完成」，確保不會顯示英文 Done
+                doneLabel: '完成', 
                 showStepNumbers: true,
                 showBullets: false,
                 scrollTo: 'element',
@@ -641,9 +642,40 @@ $result = $conn->query($sql);
                 ]
             });
 
-            // 確保位置正確
+            // 加入「下次不再顯示」的勾選框與邏輯
             tour.onchange(function() {
-                this.refresh();
+                this.refresh(); // 確保位置準確
+                
+                setTimeout(() => {
+                    const tooltipButtons = document.querySelector('.introjs-tooltipbuttons');
+                    
+                    if (tooltipButtons && !document.getElementById('introjs-dont-show-wrapper')) {
+                        const wrapper = document.createElement('div');
+                        wrapper.id = 'introjs-dont-show-wrapper';
+                        wrapper.style.display = 'flex';
+                        wrapper.style.alignItems = 'center';
+                        wrapper.style.marginRight = 'auto';
+                        wrapper.style.fontSize = '13px';
+                        wrapper.style.cursor = 'pointer';
+                        wrapper.style.paddingLeft = '10px';
+
+                        wrapper.innerHTML = `
+                            <input type="checkbox" id="introjs-dont-show" style="margin-right: 5px; cursor: pointer;">
+                            <label for="introjs-dont-show" style="cursor: pointer; color: #666;">下次不再顯示</label>
+                        `;
+                        
+                        tooltipButtons.insertBefore(wrapper, tooltipButtons.firstChild);
+
+                        // 監聽勾選動作
+                        document.getElementById('introjs-dont-show').addEventListener('change', function(e) {
+                            if (e.target.checked) {
+                                localStorage.setItem('kafu_onboarding_done', 'true');
+                            } else {
+                                localStorage.removeItem('kafu_onboarding_done');
+                            }
+                        });
+                    }
+                }, 50);
             });
 
             // 啟動導覽
