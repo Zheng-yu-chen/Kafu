@@ -31,7 +31,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </a>
     <?php endif; ?>
 
-    <?php if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3): ?>
+    <?php if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] == 3): ?>
     <a href="ai_assistant.php" class="nav-item ai-nav-item <?php echo ($current_page == 'ai_assistant.php') ? 'active' : ''; ?>">
         <div class="ai-nav-icon-ring">
             <img src="icon/chatbot_icon.png" alt="小助手">

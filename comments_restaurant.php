@@ -359,7 +359,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
                                 <?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?>
                             </div>
 
-                          <?php if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id'] && !$is_admin): ?>
+                          <?php
+                            $can_report_comment = false;
+                            if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id'] && !$is_admin) {
+                                $can_report_comment = !$is_any_shop_owner || $is_current_shop_owner;
+                            }
+                          ?>
+                          <?php if ($can_report_comment): ?>
                                 <button class="report-user-btn" onclick="reportComment(<?php echo $com['com_id']; ?>)" title="檢舉此評論">
                                     <i class="fa-solid fa-triangle-exclamation"></i> </button>
                           <?php endif; ?>

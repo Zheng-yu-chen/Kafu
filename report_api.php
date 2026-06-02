@@ -34,6 +34,28 @@ try {
     }
     $stmt_check->close();
 
+    if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 2) {
+        $owner_r_id = $_SESSION['r_id'] ?? 0;
+        $stmt_owner_check = $conn->prepare(
+            "SELECT cat.r_id FROM comments c JOIN items i ON c.item_id = i.item_id JOIN categories cat ON i.c_id = cat.c_id WHERE c.com_id = ? LIMIT 1"
+        );
+        $stmt_owner_check->bind_param("i", $com_id);
+        $stmt_owner_check->execute();
+        $result_owner_check = $stmt_owner_check->get_result();
+        $stmt_owner_check->close();
+
+        if (!$result_owner_check || $result_owner_check->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => '找不到該評論或無法檢舉。']);
+            exit;
+        }
+
+        $row_owner_check = $result_owner_check->fetch_assoc();
+        if ((int)$row_owner_check['r_id'] !== (int)$owner_r_id) {
+            echo json_encode(['success' => false, 'message' => '店家只能檢舉屬於自己店家的評論。']);
+            exit;
+        }
+    }
+
     $sql = "INSERT INTO userreports (com_id, u_id, reason, other_reason_text, created_at) VALUES (?, ?, ?, ?, NOW())";
     $stmt_insert = $conn->prepare($sql);
 
