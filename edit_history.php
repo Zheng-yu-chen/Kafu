@@ -16,17 +16,16 @@ if (isset($_SESSION['u_id']) && isset($_POST['log_id'])) {
     $new_date  = $_POST['eat_date']; 
     $new_meal  = intval($_POST['daily_meal']);
     
-    // 💡 小巧思：只改變日期並保留原本的時間更新到資料庫中
-    // 🌟 補上：在 SET 後面加上 total_fat = ? 和 total_carbs = ?
+    // 💡 保留前端選擇的日期，僅使用當前時間補上時分秒
     $sql = "UPDATE consumptionlogs 
             SET manual_item_name = ?,
                 total_calories = ?,
                 total_protein = ?,
-                total_fat = ?,       -- 🌟 補上脂肪欄位
-                total_carbs = ?,     -- 🌟 補上碳水欄位
+                total_fat = ?,
+                total_carbs = ?,
                 daily_meal = ?, 
                 price = ?,
-                recorded_at = NOW()   -- 🌟 直接改為當前資料庫時間
+                recorded_at = CONCAT(?, ' ', TIME(NOW()))
             WHERE log_id = ? AND u_id = ?";
             
     $stmt = $conn->prepare($sql);
@@ -38,14 +37,15 @@ if (isset($_SESSION['u_id']) && isset($_POST['log_id'])) {
     // 🌟 修正後的完美參數綁定：
     // s = 字串 (String), i = 整數 (Integer), d = 浮點數 (Double)
     // 總共 10 個問號對應 10 個參數，格式字串為 "sidddisdii"
-   $stmt->bind_param("sidddisii", 
+   $stmt->bind_param("sidddidsii", 
         $new_name,   
         $new_cal,    
         $new_pro,    
-        $new_fat,       
-        $new_carbs,    
+        $new_fat,    
+        $new_carbs,  
         $new_meal,   
         $new_price,  
+        $new_date,   
         $log_id,     // 此參數對應 WHERE log_id = ?
         $u_id        // 此參數對應 AND u_id = ?
     );

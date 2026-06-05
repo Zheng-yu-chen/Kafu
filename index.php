@@ -556,7 +556,7 @@ if (isset($_SESSION['u_id']) && $canRecommendRemaining) {
             <button class="close-btn" onclick="closeTrayModal()">×</button>
         </div>
 
-        <form action="add_to_tray.php" method="POST">
+        <form id="trayForm" onsubmit="return submitTrayFormAsync(event, this);">
             <input type="hidden" name="item_id" id="modalItemId" value="">
 
             <div class="modal-body">
@@ -1126,6 +1126,36 @@ function openTrayModal(itemId, itemName) {
     itemNameLabel.innerText = itemName;
     qtyInput.value = 1;
     modal.style.display = 'flex';
+}
+
+function submitTrayFormAsync(event, formElement) {
+    event.preventDefault();
+    const formData = new FormData(formElement);
+
+    fetch('add_to_tray.php', {
+        method: 'POST',
+        body: formData,
+        cache: 'no-store'
+    })
+    .then(response => response.text())
+    .then(data => {
+        if (data.trim() === 'success') {
+            closeTrayModal();
+            if (typeof showTrayConfirmModal === 'function') {
+                showTrayConfirmModal();
+            } else {
+                showToast('✅ 成功加入托盤！');
+            }
+        } else {
+            alert('加入托盤失敗，請重新選取餐點！');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('網路連線發生錯誤，請稍後再試！');
+    });
+
+    return false;
 }
 
 function changeQty(amt) {

@@ -42,11 +42,15 @@ if (!isset($_SESSION['u_id'])) {
                 $pro_val = floatval($item_row['protein']) * $qty;
             }
 
-            // 🚀 3. 執行符合你們資料庫欄位的 SQL 寫入指令
-            // 完美對齊：u_id, item_id, daily_meal, total_calories, total_protein
-            $sql = "INSERT INTO consumptionlogs (u_id, item_id, daily_meal, total_calories, total_protein) 
-                    VALUES ($u_id, $item_id, $daily_meal_code, $cal_val, $pro_val)";
-            $conn->query($sql);
+                // 🚀 3. 執行符合你們資料庫欄位的 SQL 寫入指令
+                // 將使用者在托盤選的日期與現在時間組成 recorded_at，避免寫入為當前日期
+                $eat_date = isset($item['eat_date']) ? $item['eat_date'] : date('Y-m-d');
+                $recorded_at = $eat_date . ' ' . date('H:i:s');
+
+                // 完美對齊：u_id, item_id, daily_meal, total_calories, total_protein, recorded_at
+                $sql = "INSERT INTO consumptionlogs (u_id, item_id, daily_meal, total_calories, total_protein, recorded_at) 
+                    VALUES ($u_id, $item_id, $daily_meal_code, $cal_val, $pro_val, '" . $conn->real_escape_string($recorded_at) . "')";
+                $conn->query($sql);
         }
         
         // 資料都安全進了資料庫歷史表，把目前網頁的暫存托盤 Session 徹底清空

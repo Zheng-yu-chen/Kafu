@@ -157,17 +157,25 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
     .macro-label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; }
     .macro-val { font-size: 14px; font-weight: bold; color: #333; }
     .macro-pro, .macro-fat, .macro-carbs { color: #4CAF50; }
-    .history-items { display: grid; gap: 14px; }
-    .item-card { background: #ffffff; border-radius: 16px; padding: 18px; border: 1px solid #f2f2f2; }
-    .item-card h4 { margin: 0 0 8px; font-size: 16px; color: #002B5B; }
-    .item-meta { color: #777; font-size: 13px; margin-bottom: 12px; }
-    .item-macros { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; margin-bottom: 10px; }
-    .item-macros span { background: #f5f9f6; border-radius: 999px; padding: 6px 10px; color: #4CAF50; }
+    .history-items { display: grid; gap: 12px; }
+    .item-card { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 14px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .item-card:last-child { border-bottom: none; }
+    .item-card h4 { margin: 0 0 6px; font-size: 16px; color: #002B5B; }
+    .item-meta { display: none; }
+    .meal-section .item-card:last-child { border-bottom: none; }
+    .item-macros { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; margin-bottom: 10px; }
+    .item-macros span { background: #f5f9f6; border-radius: 999px; padding: 5px 8px; color: #4CAF50; }
     .item-stats { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .item-price { font-weight: bold; color: #E53935; }
-    .item-calories { font-weight: bold; color: var(--primary-orange, #FF8C42); }
-    .item-actions { display: flex; gap: 10px; margin-top: 12px; }
-   
+    .item-price { font-weight: bold; color: #E53935; font-size: 13px; }
+    .item-calories { font-weight: bold; color: var(--primary-orange, #FF8C42); font-size: 13px; }
+    .item-actions { display: flex; gap: 8px; margin: 0; }
+
+    .meal-section { border: none; border-radius: 0; padding: 0; margin: 16px 0 24px; background: transparent; }
+    .meal-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }
+    .meal-title { font-size: 18px; font-weight: 800; color: #002B5B; }
+    .meal-total-cal { font-size: 16px; font-weight: 700; color: #FF8C42; }
+    .meal-section .item-card { margin-bottom: 12px; }
+    .meal-section .item-card:last-child { margin-bottom: 0; }
 
     .btn-edit { 
         background-color: #2196F3 !important; 
@@ -587,73 +595,103 @@ document.getElementById('edit_carbs').value = (carbs !== null && carbs !== undef
         selectedProgress.style.backgroundColor = barColor;
 
         historyItems.innerHTML = '';
+        const groupedLogs = {1: [], 2: [], 3: [], 4: []};
         logsByDate[dateKey].forEach(log => {
-            const itemName = log.item_id ? log.item_name : log.manual_item_name;
-            const itemCard = document.createElement('div');
-            itemCard.className = 'item-card';
+            const mealKey = parseInt(log.daily_meal, 10) || 4;
+            if (!groupedLogs[mealKey]) {
+                groupedLogs[mealKey] = [];
+            }
+            groupedLogs[mealKey].push(log);
+        });
 
-            const titleEl = document.createElement('h4');
-            titleEl.textContent = itemName;
-            itemCard.appendChild(titleEl);
+        const mealOrder = [1, 2, 3, 4];
+        mealOrder.forEach(mealKey => {
+            const mealLogs = groupedLogs[mealKey];
+            if (!mealLogs || mealLogs.length === 0) return;
 
-            const metaEl = document.createElement('div');
-            metaEl.className = 'item-meta';
-            const mealLabel = {1:'早餐',2:'午餐',3:'晚餐',4:'點心'}[log.daily_meal] || '其他';
-            metaEl.textContent = `${new Date(log.recorded_at).toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})} • ${mealLabel}`;
-            itemCard.appendChild(metaEl);
+            const mealLabel = {1:'早餐',2:'午餐',3:'晚餐',4:'點心'}[mealKey] || '其他';
+            const mealTotalCal = mealLogs.reduce((sum, log) => sum + parseInt(log.total_calories || 0, 10), 0);
 
-            const macrosEl = document.createElement('div');
-            macrosEl.className = 'item-macros';
-            ['final_protein','final_fat','final_carbs'].forEach(key => {
-                const span = document.createElement('span');
-                const label = key === 'final_protein' ? '蛋白質' : (key === 'final_fat' ? '脂肪' : '碳水');
-                span.textContent = `${label} ${parseFloat(log[key] || 0).toFixed(1)}g`;
-                macrosEl.appendChild(span);
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'meal-section';
+
+            const mealHeaderEl = document.createElement('div');
+            mealHeaderEl.className = 'meal-header';
+            mealHeaderEl.innerHTML = `
+                <div class="meal-title">${mealLabel}</div>
+                <div class="meal-total-cal">🔥 ${mealTotalCal} kcal</div>
+            `;
+            sectionEl.appendChild(mealHeaderEl);
+
+            mealLogs.forEach(log => {
+                const itemName = log.item_id ? log.item_name : log.manual_item_name;
+                const itemCard = document.createElement('div');
+                itemCard.className = 'item-card';
+
+                const titleEl = document.createElement('h4');
+                titleEl.textContent = itemName;
+                itemCard.appendChild(titleEl);
+
+                const macrosEl = document.createElement('div');
+                macrosEl.className = 'item-macros';
+                ['final_protein','final_fat','final_carbs'].forEach(key => {
+                    const span = document.createElement('span');
+                    const label = key === 'final_protein' ? '蛋白質' : (key === 'final_fat' ? '脂肪' : '碳水');
+                    span.textContent = `${label} ${parseFloat(log[key] || 0).toFixed(1)}g`;
+                    macrosEl.appendChild(span);
+                });
+                itemCard.appendChild(macrosEl);
+
+                const statsEl = document.createElement('div');
+                statsEl.className = 'item-stats';
+                const leftStats = document.createElement('div');
+                leftStats.style.display = 'flex';
+                leftStats.style.alignItems = 'center';
+                leftStats.style.gap = '12px';
+
+                const priceEl = document.createElement('div');
+                priceEl.className = 'item-price';
+                priceEl.textContent = '$' + parseFloat(log.final_price || 0).toFixed(0);
+                const caloriesEl = document.createElement('div');
+                caloriesEl.className = 'item-calories';
+                caloriesEl.textContent = `🔥 ${parseInt(log.total_calories || 0, 10)} kcal`;
+                leftStats.appendChild(priceEl);
+                leftStats.appendChild(caloriesEl);
+                statsEl.appendChild(leftStats);
+
+                const actionsEl = document.createElement('div');
+                actionsEl.className = 'item-actions';
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-edit';
+                editBtn.type = 'button';
+                editBtn.textContent = '編輯';
+                editBtn.addEventListener('click', () => {
+                    openEditModal(
+                        log.log_id,
+                        itemName,
+                        dateKey,
+                        log.daily_meal,
+                        log.total_calories,
+                        log.final_protein,
+                        log.final_fat,
+                        log.final_carbs,
+                        log.final_price
+                    );
+                });
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-delete';
+                deleteBtn.type = 'button';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteLog(log.log_id));
+                actionsEl.appendChild(editBtn);
+                actionsEl.appendChild(deleteBtn);
+                statsEl.appendChild(actionsEl);
+                itemCard.appendChild(statsEl);
+
+                sectionEl.appendChild(itemCard);
             });
-            itemCard.appendChild(macrosEl);
 
-            const statsEl = document.createElement('div');
-            statsEl.className = 'item-stats';
-            const priceEl = document.createElement('div');
-            priceEl.className = 'item-price';
-            priceEl.textContent = '$' + parseFloat(log.final_price || 0).toFixed(0);
-            const caloriesEl = document.createElement('div');
-            caloriesEl.className = 'item-calories';
-            caloriesEl.textContent = `🔥 ${parseInt(log.total_calories || 0, 10)} kcal`;
-            statsEl.appendChild(priceEl);
-            statsEl.appendChild(caloriesEl);
-            itemCard.appendChild(statsEl);
-
-            const actionsEl = document.createElement('div');
-            actionsEl.className = 'item-actions';
-            const editBtn = document.createElement('button');
-            editBtn.className = 'btn-edit';
-            editBtn.type = 'button';
-            editBtn.textContent = '編輯';
-           // 尋找你程式碼中的 editBtn 點擊事件，將其內容完整替換成這樣：
-editBtn.addEventListener('click', () => {
-    openEditModal(
-        log.log_id,
-        itemName,
-        dateKey,
-        log.daily_meal,
-        log.total_calories,
-        log.final_protein, // 🌟 修正：把 total_protein 改成 final_protein
-        log.final_fat,     // 確保使用 final_ 變數
-        log.final_carbs,   // 確保使用 final_ 變數
-        log.final_price
-    );
-});
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn-delete';
-            deleteBtn.type = 'button';
-            deleteBtn.textContent = '刪除';
-            deleteBtn.addEventListener('click', () => deleteLog(log.log_id));
-            actionsEl.appendChild(editBtn);
-            actionsEl.appendChild(deleteBtn);
-            itemCard.appendChild(actionsEl);
-
-            historyItems.appendChild(itemCard);
+            historyItems.appendChild(sectionEl);
         });
     }
 
