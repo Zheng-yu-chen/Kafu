@@ -2,55 +2,82 @@
 session_start();
 include('db.php');
 
-// 🎯 安全檢查與最高權限攔截（必須在 HTML 輸出前執行）
 if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) { 
     header("Location: login.php"); 
     exit(); 
 }
 
-// 🎯 處理管理員點擊不同按鈕的 POST 請求
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $usreport_id = intval($_POST['usreport_id']);
     $action = $_POST['action'];
 
     if ($action === 'resolve_only') {
-        // A. 單純標示為已處理
         $stmt = $conn->prepare("UPDATE userreports SET status = 1 WHERE usreport_id = ?");
         $stmt->bind_param("i", $usreport_id);
         $stmt->execute();
+        $_SESSION['flash_msg'] = "該案件已成功標示為已處理（僅結案）。";
     } 
     elseif ($action === 'block_user') {
-        // B. 停權封鎖用戶：先去撈出被檢舉人的 u_id，然後將其 is_blocked 改為 1
+
         $target_uid = intval($_POST['target_uid']);
         
-        // 1. 封鎖該用戶
+        $stmt_get_com = $conn->prepare("SELECT com_id FROM userreports WHERE usreport_id = ?");
+        $stmt_get_com->bind_param("i", $usreport_id);
+        $stmt_get_com->execute();
+        $res_com = $stmt_get_com->get_result()->fetch_assoc();
+        $com_id = $res_com['com_id'] ?? 0;
+        $stmt_get_com->close();
+
+        // 封鎖該違規用戶
         $stmt_block = $conn->prepare("UPDATE accounts SET is_blocked = 1 WHERE u_id = ?");
         $stmt_block->bind_param("i", $target_uid);
         $stmt_block->execute();
         $stmt_block->close();
         
-        // 2. 將這則檢舉案件同步標示為已處理（結案）
+        // 永久刪除該筆違規留言
+        if ($com_id > 0) {
+            $stmt_del = $conn->prepare("DELETE FROM comments WHERE com_id = ?");
+            $stmt_del->bind_param("i", $com_id);
+            $stmt_del->execute();
+            $stmt_del->close();
+        }
+        
         $stmt = $conn->prepare("UPDATE userreports SET status = 1 WHERE usreport_id = ?");
         $stmt->bind_param("i", $usreport_id);
         $stmt->execute();
+        $stmt->close();
+
+        $_SESSION['flash_msg'] = "已成功將該用戶停權封鎖，並永久刪除該違規留言！";
     }
     elseif ($action === 'warn_user') {
-        // 🎯 C. 發出警告：將被檢舉人的 has_warning 欄位設為 1
+
         $target_uid = intval($_POST['target_uid']);
         
-        // 1. 將資料庫中該用戶的未讀警告狀態打開
+        $stmt_get_com = $conn->prepare("SELECT com_id FROM userreports WHERE usreport_id = ?");
+        $stmt_get_com->bind_param("i", $usreport_id);
+        $stmt_get_com->execute();
+        $res_com = $stmt_get_com->get_result()->fetch_assoc();
+        $com_id = $res_com['com_id'] ?? 0;
+        $stmt_get_com->close();
+
         $stmt_warn = $conn->prepare("UPDATE accounts SET has_warning = 1 WHERE u_id = ?");
         $stmt_warn->bind_param("i", $target_uid);
         $stmt_warn->execute();
         $stmt_warn->close();
         
-        // 2. 將這則檢舉案件同步標示為已處理（結案）
+        if ($com_id > 0) {
+            $stmt_del = $conn->prepare("DELETE FROM comments WHERE com_id = ?");
+            $stmt_del->bind_param("i", $com_id);
+            $stmt_del->execute();
+            $stmt_del->close();
+        }
+
         $stmt = $conn->prepare("UPDATE userreports SET status = 1 WHERE usreport_id = ?");
         $stmt->bind_param("i", $usreport_id);
         $stmt->execute();
+        $stmt->close();
         
-        // 使用 Session 暫存訊息，等一下重新整理後彈出警告提示
-        $_SESSION['flash_msg'] = "已成功對該用戶發出違規警告！用戶下次登入將收到通知。";
+        $_SESSION['flash_msg'] = "已成功對該用戶發出違規警告，並永久刪除該違規留言！";
     }
     
     header("Location: admin_complaints.php"); 
@@ -81,12 +108,10 @@ $user_complaints = [];
     .page-content { padding: 20px; padding-bottom: 80px; }
     .single-title-container { background: white; border-bottom: 1px solid #ddd; position: sticky; top: 52px; z-index: 100; text-align: center; padding: 15px 0; color: #E53935; font-weight: bold; font-size: 16px; letter-spacing: 1px; }
 
-    /* 卡片與原有設計完全一致 */
     .comp-card { background: white; border-left: 5px solid #FF8C42; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .comp-title { font-weight: bold; color: #333; font-size: 15px; margin-bottom: 8px; display: flex; justify-content: space-between;}
     .comp-target { background: #f4f6f8; padding: 10px; border-radius: 8px; font-size: 13px; color: #555; margin-bottom: 10px; border: 1px dashed #ccc; }
     
-    /* 按鈕排版 */
     .admin-action-row { display: flex; gap: 8px; margin-top: 10px; }
     .admin-action-row .btn-action { flex: 1; border: none; padding: 10px 5px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; color: white; display: flex; align-items: center; justify-content: center; gap: 3px; }
     
@@ -148,10 +173,10 @@ $user_complaints = [];
                             <button type="button" class="btn-action btn-lvl-resolve" onclick="openConfirmModal(<?php echo $c['usreport_id']; ?>, 'resolve_only', '確定要將此案件標示為已讀並結案嗎？')">
                                 ✓ 僅結案
                             </button>
-                            <button type="button" class="btn-action btn-lvl-warn" onclick="openConfirmModal(<?php echo $c['usreport_id']; ?>, 'warn_user', '確定要對該用戶發出違規警告並結案嗎？')">
+                            <button type="button" class="btn-action btn-lvl-warn" onclick="openConfirmModal(<?php echo $c['usreport_id']; ?>, 'warn_user', '確定要對該用戶發出違規警告、並永久刪除此留言嗎？')">
                                 ⚠️ 警告
                             </button>
-                            <button type="button" class="btn-action btn-lvl-block" onclick="openConfirmModal(<?php echo $c['usreport_id']; ?>, 'block_user', '警告：確定要直接停權封鎖該違規用戶嗎？')">
+                            <button type="button" class="btn-action btn-lvl-block" onclick="openConfirmModal(<?php echo $c['usreport_id']; ?>, 'block_user', '確定要停權封鎖該違規用戶、並永久刪除此留言嗎？')">
                                 封鎖
                             </button>
                         </div>
@@ -169,7 +194,7 @@ $user_complaints = [];
         <p id="confirmModalText">確定要將此檢舉案件<br>標示為已處理嗎？</p>
         <div class="custom-confirm-btns">
             <button type="button" class="custom-btn custom-btn-cancel" onclick="closeConfirmModal()">取消</button>
-            <button type="button" class="custom-btn custom-btn-confirm" id="modalConfirmBtn">確定</button>
+            <button type="button" class="custom-btn" id="modalConfirmBtn" style="color: white; transition: background 0.2s;">確定</button>
         </div>
     </div>
 </div>
@@ -177,13 +202,26 @@ $user_complaints = [];
 <script>
     let currentActiveReportId = null;
 
+    // 🎯 核心新功能：根據傳入的 actionType，動態變更彈窗「確定」鈕的顏色
     function openConfirmModal(usreportId, actionType, alertText) {
         currentActiveReportId = usreportId;
         const actionField = document.getElementById('action-field-' + usreportId);
         if (actionField) {
             actionField.value = actionType;
         }
+        
         document.getElementById('confirmModalText').innerHTML = alertText;
+
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        if (confirmBtn) {
+            if (actionType === 'resolve_only') {
+                confirmBtn.style.backgroundColor = '#34C759'; 
+            } else if (actionType === 'warn_user') {
+                confirmBtn.style.backgroundColor = '#FF9800'; 
+            } else if (actionType === 'block_user') {
+                confirmBtn.style.backgroundColor = '#E53935'; 
+            }
+        }
         document.getElementById('customConfirmModal').style.display = 'flex';
     }
 

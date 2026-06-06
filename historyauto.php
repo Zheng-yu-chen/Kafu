@@ -223,7 +223,7 @@ while ($row = $res_hist->fetch_assoc()) {
             </div>
         </div>
         <div class="confirm-footer">
-            <button type="button" class="btn-confirm-cancel" onclick="closeConfirmModal()">返回修改</button>
+            <button type="button" class="btn-confirm-cancel" onclick="closeConfirmModal()">取消</button>
             <button type="button" class="btn-confirm-submit" onclick="submitFinalForm()">確定新增</button>
         </div>
     </div>
@@ -249,7 +249,7 @@ while ($row = $res_hist->fetch_assoc()) {
         const selectedDate = document.getElementById('global_date').value;
         const selectedMealVal = document.querySelector('input[name="global_meal"]:checked').value;
         
-        const mealMap = { '1': '🌅 早餐', '2': '☀️ 午餐', '3': '🌙 晚餐', '4': '🧁 點心' };
+        const mealMap = { '1': '早餐', '2': '午餐', '3': '晚餐', '4': '點心' };
         const mealText = mealMap[selectedMealVal] || '其他';
 
         const dateParts = selectedDate.split('-');
