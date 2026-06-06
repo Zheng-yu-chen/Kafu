@@ -10,12 +10,13 @@ include('header.php');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>呷寶</title>
     <link rel="stylesheet" href="style.css">
-    <style>
+<style>
         /* 整頁式聊天室專用佈局 */
         .chat-page-container {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 120px); /* 扣除頂部 header 與底部 footer 的高度 */
+            /* 💡 修正關鍵 1：減少扣除的高度，讓整個聊天容器在電腦版可以直接往下長到最底 */
+            height: calc(100vh - 60px); 
             background-color: #f8f9fa;
             position: relative;
             overflow: hidden; /* 💡 確保外層容器不亂包 */
@@ -26,10 +27,12 @@ include('header.php');
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 50px; /* 🌟 增加一點底部留白，避免最後一則訊息被加高的輸入框擋住 */
+            /* 💡 修正關鍵 2：改用較小、正常的 padding-bottom，保持畫面精緻 */
+            padding-bottom: 24px; 
             display: flex;
             flex-direction: column;
             gap: 16px; /* 稍微拉大每一組對話之間的間距，視覺更舒服 */
+            box-sizing: border-box;
         }
 
         /* 💡 新增：對話外層水平排列容器 */
@@ -74,24 +77,37 @@ include('header.php');
 
         /* 底部對話輸入欄區塊 */
         .chat-input-bar {
-            padding: 12px 15px 32px 15px; /* 底部增加 32px 的 Padding */
+            /* 💡 修正關鍵 3：電腦版內距微調，底部只留 12px，不讓它過度虛胖 */
+            padding: 12px 15px; 
             background: white;
             border-top: 1px solid #eee;
             display: flex;
             gap: 10px;
             align-items: center;
-            position: sticky;
-            bottom: 58px; /* 讓它的白色背景完美貼齊底部導覽列 */
+            
+            /* 💡 修正關鍵 4：放棄容易出錯的絕對定位與 sticky，利用 flex 特性讓它自然貼在容器底部 */
+            position: relative; 
+            margin-top: auto; /* 強制推到最底 */
+            
             z-index: 1000;
-            box-sizing: border-box; /* 💡 確保 padding 不會撐開總寬度 */
-            width: 100%;            /* 💡 預設直接填滿父容器 */
+            box-sizing: border-box; 
+            width: 100%;            /* 填滿父容器寬度 */
         }
-
+        
         /* 手機版 RWD 微調 */
         @media (max-width: 420px) {
+            .chat-page-container {
+                /* 💡 手機版 header 加 footer 如果比較高，可以獨立設定扣除高度 */
+                height: calc(100vh - 120px); 
+            }
             .chat-input-bar {
-                bottom: 90px; /* 依據你的設計，手機版往上推調整高度 */
-                padding: 12px 12px 24px 12px; /* 稍微縮小手機版的內距，讓輸入框更有空間 */
+                /* 💡 手機版如果需要避開底部導覽列，再使用 sticky 或加高 padding */
+                position: sticky;
+                bottom: 58px;
+                padding: 12px 12px 24px 12px; 
+            }
+            .chat-main-box {
+                padding-bottom: 32px; 
             }
         }
 
@@ -136,7 +152,7 @@ include('header.php');
             border-radius: 16px;
             font-size: 14px;
             max-width: 75%; /* 💡 稍微縮小最大寬度到 75%，幫左側頭貼留點舒適空間 */
-            min-width: 0;   /* 💡 核心防禦：防止 Flex 容器內的中文字串無預警壞掉折行 */
+            min-width: 0;   /* 💡 核心防禦：防止 Flex 容器內裝長字串無預警壞掉折行 */
             line-height: 1.5;
             word-break: break-word; /* 💡 改用 break-word，中英文清單才不會在奇怪的字元被切斷 */
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
@@ -156,7 +172,7 @@ include('header.php');
             border-bottom-left-radius: 2px;
             border: 1px solid #edeededf;
         }
-    </style>
+</style>
 </head>
 <body>
 
