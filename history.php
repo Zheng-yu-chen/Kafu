@@ -249,12 +249,18 @@ if (!isset($logs_by_date[$selected_date]) && !empty($logs_by_date)) {
 
 <div class="header-section">
     <a href="profile.php" class="back-btn">❮ 返回個人檔案</a>
-    <div class="header-title">
+    
+    <div class="header-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
         <div>
-            <h2>飲食歷史</h2>
-            <p>回顧與管理您的營養數據</p>
+            <h2 style="margin: 0; font-size: 24px; color: white; font-weight: bold;">飲食歷史</h2>
+            <p style="margin: 6px 0 0; opacity: 0.9; font-size: 14px; color: white;">回顧與管理您的營養數據</p>
         </div>
-        <button class="btn-manual" onclick="openManualModal()">+ 手動輸入</button>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+            <button class="btn-manual" onclick="openManualModal()" style="background: #FF8C42; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s;">+ 手動輸入</button>
+            
+            <a href="historyauto.php"  style="background:rgb(107, 166, 255); color: white; text-decoration: none; padding: 8px 16px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; transition: 0.2s; box-sizing: border-box;">+ 依照紀錄</a>
+        </div>
     </div>
 </div>
 
