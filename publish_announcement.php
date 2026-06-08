@@ -141,7 +141,7 @@ require_once 'header.php';
     
     /* 系統主體深藍確認發布按鈕 */
     .btn-submit {
-        background: linear-gradient(135deg, #002B5B, #001f42);
+        background: linear-gradient(135deg, #FF8C42, #E67328); /* 改為橘色漸層 */
         color: white;
         border: none;
         padding: 14px;
@@ -150,7 +150,7 @@ require_once 'header.php';
         font-weight: bold;
         cursor: pointer;
         transition: 0.2s;
-        box-shadow: 0 6px 15px rgba(0, 43, 91, 0.2);
+        box-shadow: 0 6px 15px rgba(255, 140, 66, 0.3); /* 陰影調整為對應的橘色 */
     }
     .btn-submit:active {
         transform: translateY(2px);
