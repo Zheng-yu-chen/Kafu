@@ -101,52 +101,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {//抓取資料庫的announcement表
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
         }
 
-        /* 按鈕樣式組合 */
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 30px;
-        }
-        
-        /* 綠色確認發布按鈕 */
-        .btn-submit {
-            background: linear-gradient(135deg, #4CAF50, #388E3C);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 25px; /* 呼應你的登出按鈕圓角 */
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.2);
-        }
-        .btn-submit:active {
-            opacity: 0.9;
-        }
-
-        /* 返回按鈕（模仿你的紅框登出按鈕，但改成溫和的灰色調） */
-        .btn-cancel {
-            display: block;
-            text-align: center;
-            background-color: white;
-            color: #666666;
-            border: 1.5px solid #e2e8f0;
-            padding: 10px;
-            border-radius: 25px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        .btn-cancel:hover {
-            background-color: #f7fafc;
-            color: #333333;
-        }
-    </style>
-</head>
-<body>
+    /* 按鈕樣式組合 */
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 10px;
+    }
+    
+    /* 系統主體深藍確認發布按鈕 */
+    .btn-submit {
+        background: linear-gradient(135deg, #002B5B, #001f42);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 25px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+        box-shadow: 0 6px 15px rgba(0, 43, 91, 0.2);
+    }
+    .btn-submit:active {
+        transform: translateY(2px);
+        box-shadow: 0 2px 8px rgba(0, 43, 91, 0.2);
+    }
+</style>
 
     <!-- 頂部綠色標題列 -->
     <div class="announcement-header">
