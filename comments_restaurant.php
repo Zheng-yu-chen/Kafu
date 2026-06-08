@@ -340,45 +340,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_submit'])) {
                      data-has-image="<?php echo !empty($com['com_img']) ? 'true' : 'false'; ?>"
                      data-text="<?php echo htmlspecialchars(mb_strtolower($com['item_name'] . $com['content'])); ?>">
                     
-                    <div style="background:white; padding:15px 15px 15px 15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; position: relative; box-sizing: border-box; padding-right: 58px;">
-                        <?php if ($is_admin): ?>
-                            <button class="comment-delete-btn" onclick="deleteComment(<?php echo $com['com_id']; ?>, this)" title="刪除評論">🗑</button>
+                    <div style="background:white; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; position: relative; box-sizing: border-box;">
+    
+                    <?php if ($is_admin): ?>
+                        <button class="comment-delete-btn" onclick="deleteComment(<?php echo $com['com_id']; ?>, this)" title="刪除評論" style="position: absolute; top: 12px; right: 12px;">🗑</button>
+                    <?php endif; ?>
+                    
+                    <div class="user-tag" style="display: flex; align-items: center; width: 100%; margin-bottom: 12px; position: relative;">
+                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                            <?php if (!empty($com['user_photo'])): ?>
+                                <img src="uploads/<?php echo htmlspecialchars($com['user_photo']); ?>" class="user-avatar" alt="頭像" onerror="this.onerror=null; this.src=this.src.replace('.jpg', '.JPG');">
+                            <?php else: ?>
+                                <div class="user-avatar-placeholder">👤</div>
+                            <?php endif; ?>
+                            <span style="color: #002B5B; font-weight: bold; font-size: 14px;"><?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?></span>
+                        </div>
+
+                        <?php
+                        $can_report_comment = false;
+                        if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id'] && !$is_admin) {
+                            $can_report_comment = !$is_any_shop_owner || $is_current_shop_owner;
+                        }
+                        ?>
+                        <?php if ($can_report_comment): ?>
+                            <button class="report-user-btn" onclick="reportComment(<?php echo $com['com_id']; ?>)" title="檢舉此評論" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); margin: 0;">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </button>
                         <?php endif; ?>
-                        
-                        <div class="user-tag" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                <?php if (!empty($com['user_photo'])): ?>
-                                    <img src="uploads/<?php echo htmlspecialchars($com['user_photo']); ?>" 
-                                         class="user-avatar" 
-                                         alt="頭像" 
-                                         onerror="this.onerror=null; this.src=this.src.replace('.jpg', '.JPG');">
-                                <?php else: ?>
-                                    <div class="user-avatar-placeholder">👤</div>
-                                <?php endif; ?>
-                                
-                                <?php echo htmlspecialchars($com['user_name'] ?? '匿名使用者'); ?>
-                            </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; width: 100%;">
+                        <strong id="comment-item-name-<?php echo $com['com_id']; ?>" style="font-size: 16px; color: #333; font-weight: bold;"><?php echo htmlspecialchars($com['item_name']); ?></strong>
+                        <span style="color:#FF8C42; font-weight: bold; font-size: 15px;">★ <span id="comment-rating-num-<?php echo $com['com_id']; ?>"><?php echo $com['rating']; ?></span></span>
+                    </div>
 
-                          <?php
-                            $can_report_comment = false;
-                            if ($current_user_id !== null && (int)$current_user_id !== (int)$com['u_id'] && !$is_admin) {
-                                $can_report_comment = !$is_any_shop_owner || $is_current_shop_owner;
-                            }
-                          ?>
-                          <?php if ($can_report_comment): ?>
-                                <button class="report-user-btn" onclick="reportComment(<?php echo $com['com_id']; ?>)" title="檢舉此評論">
-                                    <i class="fa-solid fa-triangle-exclamation"></i> </button>
-                          <?php endif; ?>
-                        </div>
-                        
-                        <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 4px;">
-                            <strong id="comment-item-name-<?php echo $com['com_id']; ?>" style="font-size: 16px; color: #333;"><?php echo htmlspecialchars($com['item_name']); ?></strong>
-                            <span style="color:#FF8C42; font-weight: bold;">★ <span id="comment-rating-num-<?php echo $com['com_id']; ?>"><?php echo $com['rating']; ?></span></span>
-                        </div>
-
-                        <p id="comment-text-content-<?php echo $com['com_id']; ?>" style="margin:4px 0 12px; color:#444; font-size: 15px; line-height: 1.5;">
-                            <?php echo nl2br(htmlspecialchars($com['content'])); ?>
-                        </p>
+                    <p id="comment-text-content-<?php echo $com['com_id']; ?>" style="margin: 4px 0 12px; color: #444; font-size: 15px; line-height: 1.5; padding-right: 10px;">
+                        <?php echo nl2br(htmlspecialchars($com['content'])); ?>
+                    </p>
 
                         <?php if (!empty($com['reply_content'])): ?>
                             <div style="
